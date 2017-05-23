@@ -1,0 +1,57 @@
+---
+title: " tutorial"
+author: "David Bescond"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+
+vignette: >
+  %\VignetteIndexEntry{tutorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+iloMicro R tools
+================
+
+
+For contact information and source code, see the [github page](https://github.com/dbescond/iloMicro)
+
+## Available tools
+
+
+sdfsf
+
+
+##installation
+
+install R:
+
+
+Release version (not yet available):
+
+```{r install, eval=FALSE}
+# install.packages("iloMicro")
+```
+
+Development version:
+
+```{r install2, eval=FALSE}
+require(devtools)
+install_github("dbescond/iloMicro")
+```
+
+Overall, the ilo package includes the following functions:
+
+```{r, eval=TRUE}
+require(iloMicro)
+as.data.frame(ls("package:iloMicro")) 
+```
+
+my futur vignette here .........
+
+This tutorial was created with
+
+```{r sessioninfo, message=FALSE, warning=FALSE}
+sessionInfo()
+```

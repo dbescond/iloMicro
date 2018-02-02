@@ -5,7 +5,7 @@
 #' Support 
 #'
 #' @param in_file dta or sav file path for loading. 
-#' @param country character for selection of country (iso3 code), default NULL.
+#' @param ref_area character for selection of country (iso3 code), default NULL.
 #' @param source character for selection of source (as ilo micro spelling, ie. LFS), default NULL.
 #' @param time , character, time, use to rebuilt a specific dataset, default NULL means all time will be takeinto account.
 #' @param ori , boolean fefault  = TRUE, look inside ORI folder to detect sav file to convert in dta
@@ -14,9 +14,9 @@
 #' @examples
 #' ## Not run:
 #'
-#' Micro_convert(in_file = 'J:/COMMON/STATISTICS/DPAU/MICRO/ARG/QLFS/2003Q3/ORI/Individual_t303.sav')
+#' Micro_convert(in_file = 'J:/COMMON/STATISTICS/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav')
 #'
-#' Micro_convert(country = 'ARG', source = 'LFS', time = '2010', encoding  = 'latin1')
+#' Micro_convert(ref_area = 'ARG', source = 'EPH', time = '2010', encoding  = 'latin1')
 #'
 #' ## End(**Not run**)
 #' @export
@@ -24,7 +24,7 @@
 
 
 Micro_convert <- function(	in_file  = NULL, 
-							country = NULL,
+							ref_area = NULL,
 							source = NULL,
 							time = NULL, 
 							ori = TRUE, 
@@ -35,21 +35,21 @@ Micro_convert <- function(	in_file  = NULL,
 	if(!is.null(in_file)){							
 		name <- basename(in_file)
 		path <- dirname(in_file)
-			if(str_sub(tolower(name),-4,-1) %in% c('.dta', '.DTA')){Micro_convert_dta(in_file); return('dta to sav ok')}
-			if(str_sub(tolower(name),-4,-1) %in% c('.sav', '.SAV')){Micro_convert_sav(in_file, encoding); return('sav to dta ok')}
+			if(stringr::str_sub(tolower(name),-4,-1) %in% c('.dta', '.DTA')){Micro_convert_dta(in_file); return('dta to sav ok')}
+			if(stringr::str_sub(tolower(name),-4,-1) %in% c('.sav', '.SAV')){Micro_convert_sav(in_file, encoding); return('sav to dta ok')}
 		}
 
-	if(!is.null(country) & !is.null(source)){
+	if(!is.null(ref_area) & !is.null(source)){
 	
 	
-		path <- paste0(ilo:::path$micro, country, '/', source, '/')		
+		path <- paste0(ilo:::path$micro, ref_area, '/', source, '/')		
 		
 		ref_time <- list.files(path)%>% as_data_frame()	 %>% filter(substr(value,1,2) %in% '20')	
 
 		if(!is.null(time)) {check <- time; ref_time <- ref_time %>% filter(value %in% check)}
 	
 			for (i in 1:nrow(ref_time)) {
-				check <-  list.files(paste0(path, ref_time$value[i], ifelse(ori, "/ORI/", '')))%>% as_data_frame() %>% filter(str_sub(value,-4,-1)%in% '.sav')
+				check <-  list.files(paste0(path, ref_time$value[i], ifelse(ori, "/ORI/", '')))%>% as_data_frame() %>% filter(stringr::str_sub(tolower(value),-4,-1)%in% '.sav')
 				
 				if(nrow(check)>0) {
 					for (j in 1:nrow(check)){
@@ -69,23 +69,25 @@ Micro_convert <- function(	in_file  = NULL,
 				ref_translate <- NULL
 				if(!is.null(encoding)){
 						ref_encoding <- paste0("unicode encoding set ", encoding)
-						ref_translate <- paste0("unicode translate ", '"',str_replace(file, '.sav', '.dta'), '"')
+						ref_translate <- paste0("unicode translate ", '"',str_replace(tolower(file), '.sav', '.dta'), '"')
 					}
 						cmd <- c(	'clear all', 
 						'set more off',
 						paste0('cd "', path_ori, '"'), 
 						paste0('usespss "', file, '"'), 
 						# "compress", 
-						paste0('save ', paste0('"',str_replace(file, '.sav', '.dta'), '"', ', replace')), 
+						paste0('save ', paste0('"',str_replace(tolower(file), '.sav', '.dta'), '"', ', replace')), 
 						'clear', 
 						ref_encoding, 
 						ref_translate,
+						'exit, clear', 
 						'exit')
 			
 		
-						writeLines(cmd , con = paste0(path_ori, str_replace(file, '.sav', ''), ".do"), sep = '\n', useBytes = TRUE)
+						writeLines(cmd , con = paste0(path_ori, str_replace(tolower(file), '.sav', ''), ".do"), sep = '\n', useBytes = TRUE)
 
-						system(paste0('"C:\\Program Files (x86)\\Stata14\\Stata-64.exe" do "',paste0(path_ori, str_replace(file, '.sav', ''), ".do"),'"'))
+						system(paste0('"C:\\Program Files (x86)\\Stata14\\Stata-64.exe" do "',paste0(path_ori, str_replace(tolower(file), '.sav', ''), ".do"),'"'))
+						system(paste0('TASKKILL /F /IM Stata-64.exe /T'))
 						unlink('bak.stunicode', recursive = TRUE, force = TRUE)
 
 
@@ -101,7 +103,7 @@ Micro_convert <- function(	in_file  = NULL,
 
 return('ok')
 }
-	if(!(!is.null(country) & !is.null(source))) return('country AND source should be provide, or at least in_file')
+	if(!(!is.null(ref_area) & !is.null(source))) return('ref_area AND source should be provide, or at least in_file')
 		
 			
 }

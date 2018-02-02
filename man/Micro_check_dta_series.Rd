@@ -2,16 +2,13 @@
 % Please edit documentation in R/Micro_check_dta_series.r
 \name{Micro_check_dta_series}
 \alias{Micro_check_dta_series}
-\alias{Micro_check_dta_series_view}
 \title{helper to check dta columns and value present over times series}
 \usage{
-Micro_check_dta_series(country = NULL, source = NULL, time = NULL,
-  validate = TRUE)
-
-Micro_check_dta_series_view(df)
+Micro_check_dta_series(ref_area = NULL, source = NULL, time = NULL,
+  validate = TRUE, saveCSV = FALSE)
 }
 \arguments{
-\item{country}{character for selection of country (iso3 code), mandatory if path is not set.}
+\item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
 
 \item{source}{character for selection of source (as ilo micro spelling, ie. LFS), mandatory if path is not set.}
 
@@ -26,7 +23,7 @@ Support for recoding variable, check \code{?car::Recode}, for labelling variable
 ## Not run:
 
 
-X <- Micro_check_dta_series(country = 'ECU', source = 'LFS')
+X <- Micro_check_dta_series(ref_area = 'ALB', source = 'LFS')
 
 ## End(**Not run**)
 }

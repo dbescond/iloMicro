@@ -7,7 +7,6 @@
 #' @param var variable from the microdataset to manipulate.
 #' @param var.name character, variable name to manipulate in input.
 #' @param to character, variable name to return.
-#' @author ILO / bescond  
 #' @keywords ILO, microdataset, preprocessing
 #' @examples
 #' ## Not run:
@@ -39,7 +38,6 @@ Micro_cat_label <- function(var, var.name, add.total = FALSE){
 }
 
 #' @export
-#' @rdname Micro_process
 Micro_cat_recode <- function(var, var.name, to){
 	
 	var.name <- gsub('job1_','',var.name);	var.name <- gsub('job2_','',var.name);	var.name <- gsub('joball_','',var.name);	var.name <- gsub('ilo_prev','ilo_',var.name)

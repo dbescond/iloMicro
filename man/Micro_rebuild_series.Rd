@@ -4,17 +4,15 @@
 \alias{Micro_rebuild_series}
 \title{helper to work with micro data preprocessing workflow}
 \usage{
-Micro_rebuild_series(master_id = 1, country, source, ori_pattern,
-  time = NULL, clean = TRUE)
+Micro_rebuild_series(master_id = "all", ref_area, source, time = NULL,
+  clean = TRUE)
 }
 \arguments{
-\item{master_id}{ie. 1 for working with master_1 and copy_1. Default = 1.}
+\item{master_id}{character ie. '1' for working with master_1 and copy_1. Default = 'all', could be also '12' for master 1 and 2.}
 
-\item{country}{character for selection of country (iso3 code), mandatory.}
+\item{ref_area}{character for selection of country (iso3 code), mandatory.}
 
 \item{source}{character for selection of source (as ilo micro spelling, ie. LFS), mandatory.}
-
-\item{ori_pattern}{character pattern always found in the names of the original dta files, ie '_EnemduBDD', that will be detect in order to replace global input file on the do file. mandatory}
 
 \item{time}{, character, time use to rebuilt a specific dataset, default NULL, means all time will be takeinto account, option.}
 
@@ -27,18 +25,14 @@ From Master_x rebuild time series by copy readMe, do and fwk files, then run do 
 ## Not run:
 
 ## some example
-	Micro_rebuild_series(master_id = 2, country = 'ARG', source = 'QLFS', ori_pattern = 'individual_')
 
- Micro_rebuild_series(master_id = 1, country = 'BRA', source = 'QLFS', ori_pattern = 'pnadc_', time = '2015Q3')
+	Micro_rebuild_series(master_id = '1', ref_area = 'PHL', source = 'LFS', time = '2015Q3')
 
- Micro_rebuild_series(master_id = 2, country = 'ECU', source = 'LFS', ori_pattern = '_EnemduBDD', time = '2013Q4')
- Micro_rebuild_series(master_id = 1, country = 'GTM', source = 'LFS', ori_pattern = 'Personas', time = '2015Q4')
+ Micro_rebuild_series(master_id = '1', ref_area = 'PHL', source = 'LFS') # Master 1
 
- Micro_rebuild_series(master_id = 1, country = 'IDN', source = 'LFS', ori_pattern = 'IDN_', time = '2014Q3')
+ Micro_rebuild_series(master_id = '12', ref_area = 'PHL', source = 'LFS') # Master 1 and Master2
 
- Micro_rebuild_series(master_id = 1, country = 'MEX', source = 'QLFS', ori_pattern = 'sdemt')
-
- Micro_rebuild_series(master_id = 1, country = 'ZAF', source = 'LFS', ori_pattern = 'lfs')
+ Micro_rebuild_series(ref_area = 'PHL', source = 'LFS') # all Masters
 
 ## End(**Not run**)
 }

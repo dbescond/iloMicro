@@ -19,11 +19,6 @@ Micro_load(path = NULL, ilo_time = NULL, query = NULL, asFactor = FALSE,
 \description{
 dataset could be manipulate during the load file base on the workflow arguments
 }
-\examples{
-## Not run:
-
-## End(**Not run**)
-}
 \author{
 ILO / bescond
 }

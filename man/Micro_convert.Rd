@@ -4,13 +4,13 @@
 \alias{Micro_convert}
 \title{helper to convert fil in dta or sav}
 \usage{
-Micro_convert(in_file = NULL, country = NULL, source = NULL,
+Micro_convert(in_file = NULL, ref_area = NULL, source = NULL,
   time = NULL, ori = TRUE, encoding = NULL)
 }
 \arguments{
 \item{in_file}{dta or sav file path for loading.}
 
-\item{country}{character for selection of country (iso3 code), default NULL.}
+\item{ref_area}{character for selection of country (iso3 code), default NULL.}
 
 \item{source}{character for selection of source (as ilo micro spelling, ie. LFS), default NULL.}
 
@@ -27,9 +27,9 @@ Support
 \examples{
 ## Not run:
 
-Micro_convert(in_file = 'J:/COMMON/STATISTICS/DPAU/MICRO/ARG/QLFS/2003Q3/ORI/Individual_t303.sav')
+Micro_convert(in_file = 'J:/COMMON/STATISTICS/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav')
 
-Micro_convert(country = 'ARG', source = 'LFS', time = '2010', encoding  = 'latin1')
+Micro_convert(ref_area = 'ARG', source = 'EPH', time = '2010', encoding  = 'latin1')
 
 ## End(**Not run**)
 }

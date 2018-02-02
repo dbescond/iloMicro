@@ -2,11 +2,12 @@
 % Please edit documentation in R/iloMicro.r
 \name{iloMicro}
 \alias{iloMicro}
-\title{iloMicro: Tools kit for ilo microdata processing of household / labour force survey}
+\title{Tools kit for ilo microdata processing of household / labour force survey}
 \description{
 description of the project here
 }
 \details{
+brief description of the package
 Targets:
 
 \itemize{
@@ -15,3 +16,10 @@ Targets:
 \item helper to convert sav to dta and viseversa
 }
 }
+\references{
+See citation("iloMicro")
+}
+\author{
+David Bescond \email{bescond@ilo.org}
+}
+\keyword{package}

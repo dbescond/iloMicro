@@ -13,7 +13,7 @@
 #'
 #' ## End(**Not run**)
 #' @export
-#' @rdname Micro_process
+
 Micro_cat_label <- function(var, var.name, add.total = FALSE){
 
 	if(stringr::str_sub(var.name,-7,-1) %in% '2digits'){

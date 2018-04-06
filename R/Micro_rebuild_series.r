@@ -80,7 +80,7 @@ Micro_rebuild_series <- function(
 	
 		if(!is.null(time)) {ref_time <- time; ref_folder <- ref_folder %>% filter(value %in% ref_time)}
 	
-
+		if(nrow(ref_folder) == 0) {print(paste0('Master_', master_id[M], ' has no copy : OK'))} else{
 	
 		for (fol in 1:nrow(ref_folder)){
 
@@ -113,6 +113,8 @@ Micro_rebuild_series <- function(
 		
 			if(length(check_imput_name) == 1){
 			
+			test <- doFile[doFile %>% str_detect('global inputFile')] %>% length
+			if(test ==0 ) print(paste0('global inputFile not found plse check spelling' ))
 			doFile[doFile %>% str_detect('global inputFile')] <- paste0(stringr::str_sub(doFile[doFile %>% str_detect('global inputFile')], 1, 17), shQuote(check_imput_name)) }
 			writeLines(doFile , con = paste0(ref_folder$myPath[fol], gsub(master, ref_folder$value[fol], master_file$value[1])), sep = '\n', useBytes = TRUE)
 
@@ -129,6 +131,7 @@ Micro_rebuild_series <- function(
 
 		}
 	
+		}
 		print(paste0('Rebuilding Master_', master_id[M], ' done'))
 	}
 

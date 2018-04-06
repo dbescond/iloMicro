@@ -63,11 +63,11 @@ options(warn = 0)
 # load template
 
 
-	ilo_tpl$Variable 			<- readxl::read_excel(file.path('J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/template','3_Framework.xlsx'), sheet= 'Variable') 
-	ilo_tpl$Help_classif 		<- readxl::read_excel(file.path('J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/template','3_Framework.xlsx'), sheet= 'Help_classif') 
-	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path('J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/template','3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 19)) 
-	ilo_tpl$Mapping_classif 	<- readxl::read_excel(file.path('J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/template','3_Framework.xlsx'), sheet= 'Mapping_classif') 
-	ilo_tpl$Mapping_rep_var 	<- readxl::read_excel(file.path('J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/template','3_Framework.xlsx'), sheet= 'Mapping_rep_var') 
+	ilo_tpl$Variable 			<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Variable') 
+	ilo_tpl$Help_classif 		<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Help_classif') 
+	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 19)) 
+	ilo_tpl$Mapping_classif 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_classif') 
+	ilo_tpl$Mapping_rep_var 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_rep_var') 
 
 	if(testNote){ilo_tpl$Note <- ilo_tpl$Variable}
 	

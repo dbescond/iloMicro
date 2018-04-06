@@ -14,7 +14,7 @@
 #' @examples
 #' ## Not run:
 #'
-#' Micro_convert(in_file = 'J:/COMMON/STATISTICS/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav')
+#' Micro_convert(in_file = 'J:/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav')
 #'
 #' Micro_convert(ref_area = 'ARG', source = 'EPH', time = '2010', encoding  = 'latin1')
 #'

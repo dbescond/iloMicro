@@ -36,6 +36,7 @@
 #' @importFrom dplyr as.tbl
 #' @importFrom dplyr slice
 #' @importFrom dplyr contains
+#' @importFrom textreadr read_document
 #' @importFrom dplyr lag
 #' @importFrom dplyr distinct
 #' @importFrom dplyr distinct_

@@ -403,10 +403,12 @@ Micro_prepare_ESP_EPA <- function(ref_area, source, time, wd){
 Micro_prepare_USA_CPS <- function(ref_area, source, time, wd){
 	
 	if(wd %in% 'default') {
-		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI'))	
+		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI/Data/'))	
 	} else {
 	setwd(wd)
 	}
+	
+	
 	
 	ref_files <- list.files() %>% as_data_frame 
 
@@ -423,43 +425,51 @@ Micro_prepare_USA_CPS <- function(ref_area, source, time, wd){
 	
 	for (j in 1:nrow(REF)){
 	
-		eval(parse(text = paste0( 'DATA <- DATA %>% mutate(',REF$NAME[j],' = str_sub(value,',REF$Start[j],',',REF$Stop[j],'))'     )))
+		eval(parse(text = paste0( 'DATA <- DATA %>% mutate(',REF$NAME[j],' = str_sub(value,',REF$START[j],',',REF$END[j],'))'     )))
 
 	}			
 		
 	
-	DATA <- DATA %>% select(-value)	%>%	
-			mutate_all(funs(gsub('  ', ' ', .))) %>% 
-			mutate_all(funs(gsub(' ', '', .))) %>% 
-			mutate_all(funs(ifelse(. %in% '', NA, .))) %>%  
-			mutate_all(funs(ifelse(. %in% '-1', NA, .)))     ########## transform -1 in NA in order to reduce to integer when i   
+	DATA <- DATA %>% select(-value)	
+	DATA <- DATA %>% mutate_all(funs(gsub('  ', ' ', .)))
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	DATA <- DATA %>% 		mutate_all(funs(gsub(' ', '', .))) 
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	DATA <- DATA %>% 		mutate_all(funs(ifelse(. %in% '', NA, .))) 
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))	
+	DATA <- DATA %>% 		mutate_all(funs(ifelse(. %in% '-1', NA, .)))     ########## transform -1 in NA in order to reduce to integer when i   
 		
 		################ revised
 	REF <- REF %>% distinct(NAME, DESCRIPTION)
 		for (j in 1:ncol(DATA)){
-		info <- REF %>% filter(NAME %in% colnames(DATA)[j])
-		test <- unique(DATA[[info$NAME[1]]]) %>% as.numeric %>% as.character %in% unique(DATA[[info$NAME[1]]])  %>% unique
-		if(length(test) %in% 1 ) { if(test %in% TRUE) {	eval(parse(text = paste0( 'DATA <- DATA %>% mutate(',info$NAME[1],' = as.numeric(',info$NAME[1],'))'     )))
+			info <- REF %>% filter(NAME %in% colnames(DATA)[j])
+			test <- unique(DATA[[info$NAME[1]]]) %>% as.numeric %>% as.character %in% unique(DATA[[info$NAME[1]]])  %>% unique
+			if(length(test) %in% 1 ) { if(test %in% TRUE) {	eval(parse(text = paste0( 'DATA <- DATA %>% mutate(',info$NAME[1],' = as.numeric(',info$NAME[1],'))'     )))
 		}}
 		rm(info, test)
 	}
 	
-		
+	
 
 		
 	for (k in 1:ncol(DATA)){attributes(DATA[[k]])$label <- REF$DESCRIPTION[k]}
-		
-	file <- paste0( 'USA_LFS_',time, '.dta')	
+	a <- getwd()	%>% str_replace(fixed('/ORI/Data'), '/ORI')	
+	setwd(a)
+	file <- paste0( 'USA_CPS_',time, '.dta') 
 	DATA %>% haven:::write_dta(path = file)				
 		
 	myPath <- paste0(getwd(), '/')
-
+rm(DATA, REF, file)
+	
 		
 invisible(gc(reset = TRUE))
 invisible(gc(reset = TRUE))
 		cmd <- c(	'clear all', 
 			'set more off',
-			paste0('cd "', myPath, '"'), 
+			paste0('cd "',myPath , '"'), 
 			paste0('use "', file, '"'), 
 			"compress", 
 			paste0('save ', paste0('"',file, '"', ', replace')), 'exit')
@@ -467,15 +477,18 @@ invisible(gc(reset = TRUE))
 		
 		writeLines(cmd , con = paste0( file, ".do"), sep = '\n', useBytes = TRUE)
 		system(paste0('"C:\\Program Files (x86)\\Stata14\\Stata-64.exe" -e do "',paste0(myPath, file, ".do"),'"'))
-		unlink(paste0( file, ".do"))
-		unlink(paste0( file, ".log"))
+		unlink(paste0(myPath, file, ".do"))
+		unlink(paste0(myPath, file, ".log"))
+		unlink(paste0(myPath, file, ".log"))
+		unlink(paste0(myPath, file, ".log"))
 		
 	invisible(gc(reset = TRUE))
 
-rm(DATA, REF, file)
-	
+
 	
 
 	
 	
 }
+
+

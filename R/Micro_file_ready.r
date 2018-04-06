@@ -22,7 +22,7 @@ Micro_file_ready <- function(DDI = FALSE){
 	read <- workflow  %>% mutate(	source_type_code = stringr::str_sub(source_title, 2,4), 
 									source_type_code = ifelse(stringr::str_sub(source_type_code,-1,-1) %in% ':', stringr::str_sub(source_type_code,1,2), NA) ) %>% 
 									left_join(select(ilo$code$cl_source, source_type_code = code, source_type = label_en), by = "source_type_code") %>%
-						select(ref_area, source, source_title, source_type, time, path, processing_status, processing_update = processing_date, origine_repo, origine_website, origine_date, comments, type, freq_code) %>% 
+						select(ref_area, source, source_title, source_type, time, path, processing_status, processing_update = processing_date, origine_repo, origine_website, origine_date, comments, type, freq_code, on_ilostat) %>% 
 						mutate(type = ifelse(processing_status %in% c("Published", "Ready"), type, NA))
 	
 	rm(workflow)
@@ -66,14 +66,14 @@ Micro_file_ready <- function(DDI = FALSE){
 			arrange(ref_area, source, desc(time)) %>% 
 			as.data.frame 
 
-
+	readworkflow <- read %>% select(-on_ilostat)
 
 
 	
 	
 	class(read$ref_area) <- "hyperlink"
 	class(read$path) <- "hyperlink"
- 
+	
 			
 	res <- res %>% 	switch_ilo(ref_area, keep) %>% 
 				mutate(last_year = as.numeric(last_year),
@@ -97,8 +97,8 @@ Micro_file_ready <- function(DDI = FALSE){
 	## Add worksheets
 	addWorksheet(wb, "workflow")
 	addWorksheet(wb, "summary")
-	addFilter(wb, 1, row = 1, cols = 1:ncol(read))
-	writeData(wb, "workflow", read)
+	addFilter(wb, 1, row = 1, cols = 1:ncol(readworkflow))
+	writeData(wb, "workflow", readworkflow)
 	addFilter(wb, 2, row = 1, cols = 1:ncol(res))
 	writeData(wb, "summary", res)
 	saveWorkbook(wb, file = "MICRO_Workflow.xlsx", overwrite = TRUE)
@@ -106,7 +106,7 @@ Micro_file_ready <- function(DDI = FALSE){
 	
 if(DDI){
 	
-	x <- create_ddi(as.tbl(read) %>% filter(processing_status %in% c("Published", "Ready")))
+	x <- create_ddi(as.tbl(read) %>% filter(processing_status %in% c("Published", "Ready"), on_ilostat %in% c('Yes','DDI_only')) %>% select(-on_ilostat))
 	wb <- createWorkbook()
 	
 	addWorksheet(wb, "DDI")
@@ -135,7 +135,9 @@ if(DDI){
 			`XXX10` = '', 
 			`Producers and Sponsors` = 'Producers and Sponsors', 
 			`Sampling` = 'Sampling',
-			`Data Collection` = 'Data Collection') %>% select(-value)
+			`Data Collection` = 'Data Collection', 
+			`ilo notes` = 'ilo notes'
+			) %>% select(-value)
 	
 	writeData(wb,startRow = 1, colNames = FALSE,  "DDI", y)
 	writeData(wb, startRow = 2, "DDI", x)
@@ -203,29 +205,65 @@ create_ddi <- function(x){
 			`Geographic Coverage` = ifelse(str_detect(tolower(source.label), 'urban'), 'Urban area', 'National coverage'),
 			`Primary Investigator` = AGY_NAME1, 
 			`Sampling Procedure` = as.character(NA),
-			`Data reference period` = label_freq
-	)				
+			`Data reference period` = label_freq, 
+			`ilo notes` =   as.character(NA)
+			
+			)				
 						
 
 						
 
 test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>% 
 				select(path) %>% 
-				mutate(file = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO.dta')) %>% 
-				mutate(n_records = 0)
+				mutate(file = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO.dta'), 
+					   DOCfile = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO_README.docx')) %>% 
+				mutate(n_records = 0, 
+						important_ILO_notes = NA)
+tocheck <- NULL				
 	for (i in 1:nrow(test)){
 
-		try(test$n_records[i] <- read_dta(test$file[i]) %>% nrow(), silent = TRUE)
+		try(test$n_records[i] <- haven::read_dta(test$file[i]) %>% nrow(), silent = TRUE)
 		invisible(gc(reset = TRUE))
 		invisible(gc(reset = TRUE))
-		print(test$file[i])
-
+		
+		
+		check <- textreadr::read_document(test$DOCfile[i]) 
+		
+		if(class(check) %in% "character" & length(check) > 1){
+		  check[1] <- paste0("<TITLE>", check[1], "<BR>")
+		
+		  for(j in 2:length(check)){
+			
+			  if(str_detect(tolower(check[j]), 'ilo_')){
+				  check[j] <- paste0("<SUBTITLE>", check[j], "<BR>")
+			  } else {
+				  check[j] <- paste0(check[j], "<BR>")
+			  }	
+		  }
+		  
+		  test$important_ILO_notes[i] <-  check %>% as_data_frame %>% slice(-1) %>% nest
+		
+		  print(paste0(i, ' / ', test$file[i]))
+		
+		} else {
+		tocheck <- c(tocheck,paste0(i , ' --- ', test$file[i], ' ---   ERROR README.docx') )
+		print(paste0(i , ' / ', test$file[i], ' ---   ERROR README.docx'))
+		
+		}
+		
 	}
-	x <- x %>% left_join(select(test, path, n_records), by = "path") %>% 
+	
+	if(length(tocheck) > 0 ) {tocheck %>% as_data_frame %>% separate(value, c('id','path','error'), sep = fixed(' --- ')) %>% write_csv(paste0(ilo:::path$micro, '/_Admin/CMD/log_readMe_error.csv'), na = '')}
+	
+	
+	
+	x <- x %>% select(-`ilo notes`) %>% left_join(select(test, path, n_records,important_ILO_notes), by = "path") %>% 
 				mutate(
 					`Sampling Procedure` = paste0('n records = ', n_records )) %>% 
 				select(-n_records) %>% 
-				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`Data reference period`)	
+				mutate(important_ILO_notes = ifelse(important_ILO_notes %in% NA, '', important_ILO_notes)) %>%
+				rename(`ilo notes` = important_ILO_notes) %>%
+				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`)	
 
 	invisible(gc(reset = TRUE))
 	x
@@ -368,7 +406,7 @@ require(iloMicro)
 
 	getwd()
 	
-	setwd("J:/COMMON/STATISTICS/DPAU/MICRO/_Admin/TEST_FILE/NEW/")
+	setwd(paste0(ilo:::path$micro,"_Admin/TEST_FILE/NEW/"))
 	
 	for(i in 1:length(unique(FINAL$processing_by) )){
 	

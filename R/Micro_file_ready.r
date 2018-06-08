@@ -136,7 +136,8 @@ if(DDI){
 			`Producers and Sponsors` = 'Producers and Sponsors', 
 			`Sampling` = 'Sampling',
 			`Data Collection` = 'Data Collection', 
-			`ilo notes` = 'ilo notes'
+			`ilo notes` = 'ilo notes',
+			`XXX11` ='variable available', 
 			) %>% select(-value)
 	
 	writeData(wb,startRow = 1, colNames = FALSE,  "DDI", y)
@@ -218,11 +219,19 @@ test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>%
 				mutate(file = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO.dta'), 
 					   DOCfile = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO_README.docx')) %>% 
 				mutate(n_records = 0, 
-						important_ILO_notes = NA)
+						important_ILO_notes = NA, 
+						var_available = NA)
 tocheck <- NULL				
 	for (i in 1:nrow(test)){
-
-		try(test$n_records[i] <- haven::read_dta(test$file[i]) %>% nrow(), silent = TRUE)
+		test_dta <- NULL
+		try(test_dta <- haven::read_dta(test$file[i]))
+		if(!is.null(test_dta)){
+			test$var_available[i] <- paste0(colnames(test_dta), collapse = '/') 
+			test$n_records[i] <-  nrow(test_dta)
+			rm(test_dta)
+		
+		}
+		
 		invisible(gc(reset = TRUE))
 		invisible(gc(reset = TRUE))
 		
@@ -257,13 +266,13 @@ tocheck <- NULL
 	
 	
 	
-	x <- x %>% select(-`ilo notes`) %>% left_join(select(test, path, n_records,important_ILO_notes), by = "path") %>% 
+	x <- x %>% select(-`ilo notes`) %>% left_join(select(test, path, n_records,important_ILO_notes, var_available), by = "path") %>% 
 				mutate(
 					`Sampling Procedure` = paste0('n records = ', n_records )) %>% 
 				select(-n_records) %>% 
 				mutate(important_ILO_notes = ifelse(important_ILO_notes %in% NA, '', important_ILO_notes)) %>%
 				rename(`ilo notes` = important_ILO_notes) %>%
-				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`)	
+				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`, var_available)	
 
 	invisible(gc(reset = TRUE))
 	x

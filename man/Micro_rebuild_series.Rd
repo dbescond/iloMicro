@@ -5,7 +5,7 @@
 \title{helper to work with micro data preprocessing workflow}
 \usage{
 Micro_rebuild_series(master_id = "all", ref_area, source, time = NULL,
-  clean = TRUE)
+  clean = TRUE, timefrom = NULL, timeto = NULL)
 }
 \arguments{
 \item{master_id}{character ie. '1' for working with master_1 and copy_1. Default = 'all', could be also '12' for master 1 and 2.}
@@ -17,6 +17,10 @@ Micro_rebuild_series(master_id = "all", ref_area, source, time = NULL,
 \item{time}{, character, time use to rebuilt a specific dataset, default NULL, means all time will be takeinto account, option.}
 
 \item{clean, }{if TRUE delete files contained in the rebuild folder (not ORI repo), default TRUE.}
+
+\item{timefrom}{query to reduce time as from starting year timefrom.}
+
+\item{timeto}{query to reduce time as from ending year timeto.}
 }
 \description{
 From Master_x rebuild time series by copy readMe, do and fwk files, then run do file and get ILO.dta and FULL.dtaand

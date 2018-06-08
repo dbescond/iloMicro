@@ -7,6 +7,8 @@
 #' @param source character for selection of source (as ilo micro spelling, ie. LFS), mandatory.
 #' @param time , character, time use to rebuilt a specific dataset, default NULL, means all time will be takeinto account, option. 
 #' @param clean, if TRUE delete files contained in the rebuild folder (not ORI repo), default TRUE.
+#' @param timefrom  query to reduce time as from starting year timefrom.
+#' @param timeto  query to reduce time as from ending year timeto.
 #' @author ILO / bescond  
 #' @keywords ILO, microdataset, processing
 #' @examples
@@ -30,7 +32,9 @@ Micro_rebuild_series <- function(
 						ref_area ,
 						source , 
 						time = NULL, 
-						clean = TRUE
+						clean = TRUE, 
+						timefrom = NULL, 
+						timeto = NULL
 							){
 
 	workflow <- iloMicro:::Micro_get_workflow( ref_area, source) %>% filter(str_detect(type, 'Copy|Master')) %>% 
@@ -79,6 +83,18 @@ Micro_rebuild_series <- function(
 		ref_folder <- ref_folder %>% filter(!value %in% master)
 	
 		if(!is.null(time)) {ref_time <- time; ref_folder <- ref_folder %>% filter(value %in% ref_time)}
+	
+		if(!is.null(timefrom)){
+			ref_time <- as.numeric(str_sub(timefrom,1,4)) 
+			ref_folder <- ref_folder %>% filter(as.numeric(str_sub(value,1,4)) > ref_time - 1)
+			rm(ref_time) 
+		}
+		if(!is.null(timeto)){
+			ref_time <- as.numeric(str_sub(timeto,1,4)) 
+			ref_folder <- ref_folder %>% filter(as.numeric(str_sub(value,1,4)) < ref_time + 1)
+			rm(ref_time) 
+		}
+	
 	
 		if(nrow(ref_folder) == 0) {print(paste0('Master_', master_id[M], ' has no copy : OK'))} else{
 	

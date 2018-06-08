@@ -8,7 +8,8 @@ Micro_process(ref_area = NULL, source = NULL, time = NULL,
   indicator = NULL, ktest = c(max = 15, min = 5, threshold = 0.334),
   saveCSV = TRUE, ilo_time = NULL, delete = FALSE, collection = "YI",
   keep_count = TRUE, query = NULL, print_ind = TRUE, validate = FALSE,
-  consolidate = "1", skip = NULL)
+  consolidate = "1", skip = NULL, timefrom = NULL, timeto = NULL,
+  output = "ilostat")
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
@@ -38,6 +39,12 @@ Micro_process(ref_area = NULL, source = NULL, time = NULL,
 \item{validate}{only ready file on workflow.}
 
 \item{skip}{for excuding a source as character}
+
+\item{timefrom}{query to reduce time as from starting year timefrom.}
+
+\item{timeto}{query to reduce time as from ending year timeto.}
+
+\item{output}{if one year one specific indicator, return in ilo template format. Default 'ilostat'}
 
 \item{path}{dta or zip file path for loading ilo microdataset pre precessed, default = NULL.}
 

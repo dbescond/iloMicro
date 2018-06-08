@@ -14,18 +14,19 @@
 #' ## End(**Not run**)
 #' @export
 
-Micro_cat_label <- function(var, var.name, add.total = FALSE){
+Micro_cat_label <- function(var, var.name, add.total = FALSE, indicator){
 
-	if(stringr::str_sub(var.name,-7,-1) %in% '2digits'){
-		fwk <-  ilo_tpl$Variable %>% filter(var_name %in%  var.name)	%>% 
-					select(code_level, code_label) %>% mutate(code_level = as.numeric(code_level)) %>% 
-					right_join(data_frame(code_level = min(.$code_level):max(.$code_level)), by = 'code_level') %>% 
-					mutate(code_label = ifelse(code_label %in% NA, paste0(code_level, 'NA'), code_label)) %>%
-					mutate_if(is.character, funs(factor(., exclude = NULL)))
-		code <- fwk$code_level %>% as.numeric
-		label <- fwk$code_label 
-		rm(fwk)			
-	} else{
+	# if(stringr:::str_detect(indicator, '_ECO2_|_OCU2_') & stringr::str_sub(var.name,-7,-1) %in% '2digits'){
+		# fwk <-  ilo_tpl$Variable %>% filter(var_name %in%  var.name)	%>% 
+					# select(code_level, code_label) %>% mutate(code_level = as.numeric(code_level)) %>% 
+					# right_join(data_frame(code_level = min(.$code_level):max(.$code_level)), by = 'code_level') %>% 
+					# mutate(code_label = ifelse(code_label %in% NA, paste0(code_level, 'NA'), code_label)) %>%
+					# mutate_if(is.character, funs(factor(., exclude = NULL)))
+		# code <- fwk$code_level %>% as.numeric
+		# label <- fwk$code_label 
+		# rm(fwk)			
+	# } else{
+	
 		code <- ilo_tpl$Variable %>% filter(var_name %in%  var.name) %>% 
 						.$code_level %>% 
 						as.numeric%>% {if (add.total) c(0,.) else . }
@@ -33,7 +34,7 @@ Micro_cat_label <- function(var, var.name, add.total = FALSE){
 		label <- ilo_tpl$Variable %>% filter(var_name %in%  var.name) %>% 
 						.$code_label %>% {if (add.total) c('Total',.) else . }
 
-	}				
+	# }				
 	unclass(var) %>% factor(levels = code, labels = label)   
 }
 

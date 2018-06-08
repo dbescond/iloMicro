@@ -4,7 +4,7 @@
 \alias{Micro_cat_label}
 \title{helper add label in the micro - preprocessing stage in R do file}
 \usage{
-Micro_cat_label(var, var.name, add.total = FALSE)
+Micro_cat_label(var, var.name, add.total = FALSE, indicator)
 }
 \arguments{
 \item{var}{variable from the microdataset to manipulate.}

@@ -15,14 +15,14 @@
 #' @param collection map in another collection.
 #' @param print_ind print indicator processed, default = TRUE.
 #' @param keep_count expert only.
-#' @param query  expert only.
-#' @param test  expert only.
-#' @param skip for excuding a source as character 
-#' @param validate  only ready file on workflow.
-#' @param timefrom  query to reduce time as from starting year timefrom.
-#' @param timeto  query to reduce time as from ending year timeto.
-#' @param output  if one year one specific indicator, return in ilo template format. Default 'ilostat'
-
+#' @param query expert only.
+#' @param test expert only.
+#' @param skip for excuding a source as character.
+#' @param validate only ready file on workflow.
+#' @param timefrom query to reduce time as from starting year timefrom.
+#' @param timeto query to reduce time as from ending year timeto.
+#' @param output if one year one specific indicator, return in ilo template format. Default 'ilostat'.
+#'
 #' @author ILO / bescond
 #' @keywords ILO, microdataset, processing
 #' @examples
@@ -35,7 +35,6 @@
 #'  Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE)
 #'
 #'
-
 #' # run the entire process for one country only
 #' Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, consolidate = '123',ref_area ='ZAF', source = 'LFS')
 #' # run the entire process
@@ -63,7 +62,8 @@ Micro_process <- function(		# path = NULL,
 								skip = NULL, 
 								timefrom = NULL, 
 								timeto = NULL, 
-								output = 'ilostat'){
+								output = 'ilostat', 
+								PUB = FALSE){
 
 
 								# ref_area =  'VNM'
@@ -84,7 +84,8 @@ Micro_process <- function(		# path = NULL,
 								# timefrom = NULL
 								# timeto = NULL
 								# output = 'ilostat'
-								# test = NULL
+								# test = NULL, 
+								# PUB = TRUE
 
 
 
@@ -106,6 +107,11 @@ if(str_detect(consolidate, '1')){
 	if(validate) {
 			workflow <- workflow %>% 
 						filter(processing_status %in% c('Ready', 'Published')) 
+			if(PUB) {
+				workflow <- workflow %>% 
+						filter(processing_status %in% c('Published')) 
+			
+			}
 	}
 	
 	if(!is.null(ref_area)){
@@ -217,28 +223,28 @@ if(str_detect(consolidate, '2')){
 
 	print('Process quarterly average for monthly dataset !!!!')
 
-	Micro_process_quarterly_from_monthly(ref_area, source, validate, ktest, skip)
+	Micro_process_quarterly_from_monthly(ref_area, source, validate, ktest, skip, PUB)
 
 
 	print('Process annual average for quarterly dataset !!!!')
 
-	Micro_process_annual_from_quarterly(ref_area, source, validate, ktest, skip)
+	Micro_process_annual_from_quarterly(ref_area, source, validate, ktest, skip, PUB)
 
-	Micro_process_annual_from_quarterlyCalculated(ref_area, source, validate, ktest, skip)
+	Micro_process_annual_from_quarterlyCalculated(ref_area, source, validate, ktest, skip, PUB)
 
 	
-	print('Step 2 OK !!!!')
+	print(paste0('Step 2 OK !!!!  ', Sys.time() ))
 }
 
 if(str_detect(consolidate, '3')){
 	
 	print('Consolidate result  !!!!')
 	
-	Micro_process_all(ref_area, source, validate, ktest, skip)
+	Micro_process_all(ref_area, source, validate, ktest, skip, PUB)
 	
 	invisible(gc(reset = TRUE))
 	
-	print('Step 3 OK !!!!')
+	print(paste0('Step 3 OK !!!!  ', Sys.time() ))
 }
 
 
@@ -259,8 +265,8 @@ Micro_process_volume <- function(	df,
 	rm(indicator)
 
 	# get SELECT store as character vector 
-	SELECT 		<- ref_indicator$SELECT 	  %>% as.character %>% stringr::str_split(', ') %>% unlist %>% .[!. %in% '']
-	
+	SELECT <- c(ref_indicator$SELECT   %>% as.character %>% stringr::str_split(', ') %>% unlist %>% .[!. %in% ''], 'sample_count')
+
 	# get FILTER store as a string read as is
 	FILTER 		<- ref_indicator$FILTER 	  %>% as.character %>% stringr::str_replace_all(', ', ' & ') %>% gsub('==', '%in%', .)
 	
@@ -271,13 +277,18 @@ Micro_process_volume <- function(	df,
 	SUMMARISE 	<- ref_indicator$SUMMARISE %>% as.character 
 
 	# reduce and filter df base on ref_indicator instruction
-
+ df %>% 	
+		select_(.dots = SELECT)
 	df <- df %>% 	
 		select_(.dots = SELECT) %>% 
 		mutate(ilo_time = ilo_time  %>% as.character) %>%
 		mutate_if(is.factor, funs(unclass)) %>% 
 		filter_(FILTER)
 
+	if(nrow(df) == 0) {
+		print(paste0('ERROR to build indicator ', ref_indicator$ID, '!!! One component of the filter is probably missing !!!!'))
+		return(NULL)
+	}
 
 		
 	## Exception set up X for EMP_TEMP_SEX_EC2_NB & EMP_TEMP_SEX_EC2_NB
@@ -285,19 +296,23 @@ Micro_process_volume <- function(	df,
 			
 		if(stringr::str_sub(ref_indicator$indicator, -6, -4)%in% c('EC2')){
 			if(length(SELECT[SELECT %in% "ilo_job1_eco_isic4_2digits"]) == 1){
-				df <- df %>% mutate(ilo_job1_eco_isic4_2digits = ifelse(ilo_job1_eco_isic4_2digits %in% c(NA, 0), 999, ilo_job1_eco_isic4_2digits))
+				test_code <- ilo_tpl$Variable %>% filter(var_name %in% 'ilo_job1_eco_isic4_2digits')%>% .$code_level %>% as.numeric
+				df <- df %>% mutate(ilo_job1_eco_isic4_2digits = ifelse(!ilo_job1_eco_isic4_2digits %in% test_code, 999, ilo_job1_eco_isic4_2digits))
 			}
 			if(length(SELECT[SELECT %in% "ilo_job1_eco_isic3_2digits"]) == 1){
-				df <- df %>% mutate(ilo_job1_eco_isic3_2digits = ifelse(ilo_job1_eco_isic3_2digits %in% c(NA, 0), 999, ilo_job1_eco_isic3_2digits))
+				test_code <- ilo_tpl$Variable %>% filter(var_name %in% 'ilo_job1_eco_isic3_2digits')%>% .$code_level %>% as.numeric
+				df <- df %>% mutate(ilo_job1_eco_isic3_2digits = ifelse(!ilo_job1_eco_isic3_2digits %in% test_code, 999, ilo_job1_eco_isic3_2digits))
 			} 
 		}
 		
 		if(stringr::str_sub(ref_indicator$indicator, -6, -4)%in% c('OC2')){
 			if(length(SELECT[SELECT %in% "ilo_job1_ocu_isco08_2digits"]) == 1){
-				df <- df %>% mutate(ilo_job1_ocu_isco08_2digits = ifelse(ilo_job1_ocu_isco08_2digits %in% c(NA, 0), 999, ilo_job1_ocu_isco08_2digits))
+				test_code <- ilo_tpl$Variable %>% filter(var_name %in% 'ilo_job1_ocu_isco08_2digits')%>% .$code_level %>% as.numeric
+				df <- df %>% mutate(ilo_job1_ocu_isco08_2digits = ifelse(!ilo_job1_ocu_isco08_2digits%in% test_code, 999, ilo_job1_ocu_isco08_2digits))
 			}
 			if(length(SELECT[SELECT %in% "ilo_job1_ocu_isco88_2digits"]) == 1){
-				df <- df %>% mutate(ilo_job1_ocu_isco88_2digits = ifelse(ilo_job1_ocu_isco88_2digits %in% c(NA, 0), 999, ilo_job1_ocu_isco88_2digits))
+				test_code <- ilo_tpl$Variable %>% filter(var_name %in% 'ilo_job1_ocu_isco88_2digits')%>% .$code_level %>% as.numeric
+				df <- df %>% mutate(ilo_job1_ocu_isco88_2digits = ifelse(!ilo_job1_ocu_isco88_2digits %in% test_code, 999, ilo_job1_ocu_isco88_2digits))
 			}
 		}
 		
@@ -308,7 +323,7 @@ Micro_process_volume <- function(	df,
 	res <- df %>% 
 			group_by_(.dots = GROUP_BY) %>% 
 			summarise_(	obs_value = SUMMARISE, 
-						sample_count = 'n()', 
+						sample_count = 'sum(sample_count)', 
 						ilo_wgt = 'sum(ilo_wgt)') %>% 
 			ungroup 
 
@@ -320,7 +335,7 @@ Micro_process_volume <- function(	df,
 		df %>% 
 			group_by_(.dots = GROUP_BY[1]) %>% 
 			summarise_(	obs_value = SUMMARISE, 
-						sample_count = 'n()', 
+						sample_count = 'sum(sample_count)', 
 						ilo_wgt = 'sum(ilo_wgt)') %>% 
 			ungroup  %>% 
 			# set to 0 the key variables delete (0 label = 'Total')
@@ -340,7 +355,7 @@ Micro_process_volume <- function(	df,
 					df %>% 
 						group_by_(.dots = GROUP_BY[-j]) %>% 
 						summarise_(	obs_value = SUMMARISE, 
-									sample_count = 'n()', 
+									sample_count = 'sum(sample_count)', 
 							ilo_wgt = 'sum(ilo_wgt)') %>% 
 						ungroup %>%
 						# set to 0 the key variable delete (0 label = 'Total')
@@ -360,7 +375,7 @@ Micro_process_volume <- function(	df,
 					df %>% 
 						group_by_(.dots = GROUP_BY[c(1,j)]) %>% 
 						summarise_(	obs_value = SUMMARISE, 
-									sample_count = 'n()', 
+									sample_count = 'sum(sample_count)', 
 							ilo_wgt = 'sum(ilo_wgt)') %>% 
 						ungroup  %>%
 						# set to 0 the key variables delete (0 label = 'Total')
@@ -579,8 +594,7 @@ Micro_process_volume <- function(	df,
 
 	note_clas1 <- ilo_tpl$Note %>% 
 					filter(ilostat_code %in% unique(res$classif1), !ilostat_code %in% NA, var_name %in% GROUP_BY, !ilostat_note_code %in% NA) %>%
-					filter(ilostat_code %in% unique(res$classif1), !ilostat_code %in% NA, var_name %in% GROUP_BY, !ilostat_note_code %in% NA) %>%
-					select(classif1 = ilostat_code, note_clas1 = ilostat_note_code)
+					select(classif1 = ilostat_code, note_clas1 = ilostat_note_code)  %>% distinct(classif1, note_clas1)
 	if(nrow(note_clas1) >0){
 		res <- res %>% 
 				left_join(note_clas1, by = 'classif1') %>% 
@@ -594,7 +608,7 @@ Micro_process_volume <- function(	df,
 	note_clas2 <- ilo_tpl$Note %>% 
 					filter(ilostat_code %in% unique(res$classif2), !ilostat_code %in% NA, !ilostat_note_code %in% NA) %>% 
 					mutate_all(funs(as.character)) %>% 
-					select(classif2 = ilostat_code, note_clas2 = ilostat_note_code)
+					select(classif2 = ilostat_code, note_clas2 = ilostat_note_code) %>% distinct(classif2, note_clas2)
 	if(nrow(note_clas2) >0){
 		res <- res %>% 
 				left_join(note_clas2, by = 'classif2') %>% 
@@ -739,8 +753,12 @@ Micro_process_time <- function(		path = NULL,
 	}
 
 
-	df <- iloMicro:::Micro_load(path, ilo_time, query, Pending = test) %>% as.tbl %>% filter(!ilo_wgt %in% c(NA, 0))
+	df <- iloMicro:::Micro_load(path, ilo_time, query, Pending = test) %>% as.tbl %>% filter(!ilo_wgt %in% c(NA, 0)) %>% select(-contains('ilo_key'), -contains('job2_'))
 
+	df <- df %>% group_by_(.dots = colnames(df)[!colnames(df) %in% 'ilo_wgt']) %>% summarise(sample_count = n(), ilo_wgt = sum(ilo_wgt)) %>% ungroup
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	
 ##################### try to rebuilt aggregate variable	
 	
 
@@ -749,7 +767,8 @@ Micro_process_time <- function(		path = NULL,
 	try(df <- df %>% mutate(	ilo_preveco_sector  	= ilo_preveco_aggregate		%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7), 	to = c(1,2,2,2,3,3,4) 	)), silent = TRUE) # eco_sector 	
 	try(df <- df %>% mutate(	ilo_job1_eco_agnag  	= ilo_job1_eco_aggregate 	%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7), 	to = c(1,2,2,2,2,2,2) 	)), silent = TRUE) # eco_agnag 	 to add  warn_missing = FALSE
 	
-	
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
 	
 	
 	note_sou <- ilo_tpl$Note %>% filter(var_name %in% c('ilo_country', 'ilo_source') & !ilostat_note_code %in% NA) %>% summarise(test = paste0(ilostat_note_code, collapse = '_')) %>% t %>% as.character 
@@ -788,8 +807,10 @@ Micro_process_time <- function(		path = NULL,
 
 	if(nrow(ref_available_volume)> 0){
 		for (i in 1:nrow(ref_available_volume)){
-			test <- df %>% iloMicro:::Micro_process_volume(indicator = ref_available_volume %>% slice(i), ktest, output = output) %>% mutate(ref = i) 
-			volume <- bind_rows( test, volume) %>% mutate(note_source = note_sou) %>% arrange(ref)
+			test <- df %>% iloMicro:::Micro_process_volume(indicator = ref_available_volume %>% slice(i), ktest, output = output) 
+			if(!is.null(test)) {
+				volume <- bind_rows( test %>% mutate(ref = i), volume) %>% mutate(note_source = note_sou) %>% arrange(ref)
+			}
 			if (print_ind) print(paste0(i , " / ", nrow(ref_available_volume), ' : ',  ref_available_volume$ref_ind[i]))
 		}
 		rm(test, i, ref_available_volume)
@@ -821,9 +842,8 @@ Micro_process_time <- function(		path = NULL,
 				filter(table_test < ktest[3]) %>%	
 				select(-contains('sample_count'), -contains('table_test'), -contains('ilo_wgt')) %>% 
 				mutate(obs_value = ifelse(obs_status %in% 'S',as.numeric(NA),  obs_value))
-	} #else {
-		# final <- final %>% mutate(obs_status = ifelse(obs_status %in% 'S', 'U', obs_status))
-	#}
+	
+	} 
 	
 	rm(volume, ratio) ; invisible(gc(reset = TRUE))
 
@@ -905,7 +925,8 @@ Micro_process_annual_from_quarterlyCalculated <- function(	ref_area =  NULL,
 													source = NULL, 
 													validate = TRUE, 
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
-													skip = NULL){
+													skip = NULL, 
+													PUB = FALSE){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -915,6 +936,7 @@ Micro_process_annual_from_quarterlyCalculated <- function(	ref_area =  NULL,
 	workflow <- iloMicro:::Micro_get_workflow(ref_area, source) %>% filter(str_detect(type, 'Copy|Master'))
 
 	if(validate) {workflow <- workflow %>% filter(processing_status %in% c('Ready', 'Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
+	if(validate & PUB) {workflow <- workflow %>% filter(processing_status %in% c('Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
 	
 	if(!is.null(ref_area)){refref_area <- ref_area; workflow <- workflow %>% filter(ref_area %in% refref_area); rm(refref_area) }
 	
@@ -1117,7 +1139,8 @@ Micro_process_annual_from_quarterly <- function(	ref_area =  NULL,
 													source = NULL, 
 													validate = TRUE, 
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
-													skip = NULL){
+													skip = NULL, 
+													PUB = FALSE){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -1127,6 +1150,7 @@ Micro_process_annual_from_quarterly <- function(	ref_area =  NULL,
 	workflow <- iloMicro:::Micro_get_workflow(ref_area, source) %>% filter(level %in% c('Q')) %>% filter(str_detect(type, 'Copy|Master'))
 	
 	if(validate) {workflow <- workflow %>% filter(processing_status %in% c('Ready', 'Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
+	if(validate & PUB) {workflow <- workflow %>% filter(processing_status %in% c('Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
 	
 	if(!is.null(ref_area)){refref_area <- ref_area; workflow <- workflow %>% filter(ref_area %in% refref_area); rm(refref_area) }
 	
@@ -1343,7 +1367,8 @@ Micro_process_quarterly_from_monthly <- function(	ref_area =  NULL,
 													source = NULL, 
 													validate = TRUE, 
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
-													skip = NULL){
+													skip = NULL, 
+													PUB = FALSE){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -1353,7 +1378,8 @@ Micro_process_quarterly_from_monthly <- function(	ref_area =  NULL,
 	workflow <- iloMicro:::Micro_get_workflow(ref_area, source) %>% filter(level %in% c('M')) %>% filter(str_detect(type, 'Copy|Master'))
 	
 	if(validate) {workflow <- workflow %>% filter(processing_status %in% c('Ready','Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
-	
+	if(validate & PUB) {workflow <- workflow %>% filter(processing_status %in% c('Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
+		
 	if(!is.null(ref_area)){refref_area <- ref_area; workflow <- workflow %>% filter(ref_area %in% refref_area); rm(refref_area) }
 	
 	if(!is.null(source)){refsource <- source; workflow <- workflow %>% filter(source %in% refsource); rm(refsource) }
@@ -1528,7 +1554,8 @@ Micro_process_all <- function(		ref_area =  NULL,
 											validate = TRUE, 
 											ktest = c(max = 15, min = 5, threshold = 0.334), 
 											skip = NULL, 
-											output = 'ilostat'){
+											output = 'ilostat', 
+											PUB = FALSE){
 
 	init_wd <- getwd()
 	setwd(ilo:::path$micro)
@@ -1546,7 +1573,8 @@ Micro_process_all <- function(		ref_area =  NULL,
 						distinct(ref_area, source, time) %>% 
 						unite(value, ref_area, source, time, sep = '_') %>% 
 						mutate(value = paste0(value, '.csv')) %>% t %>% as.character
-	if(validate) {workflow <- workflow %>% filter(processing_status %in% c('Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
+	if(validate) {workflow <- workflow %>% filter(processing_status %in% c('Ready','Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
+	if(validate & PUB) {workflow <- workflow %>% filter(processing_status %in% c('Published'), CC_ilostat %in% 'Yes', !freq_code %in% NA) }
 	
 	if(!is.null(ref_area)){refref_area <- ref_area; workflow <- workflow %>% filter(ref_area %in% refref_area); rm(refref_area) }
 	if(!is.null(source)){refsource <- source; workflow <- workflow %>% filter(source %in% refsource); rm(refsource) }
@@ -1555,8 +1583,11 @@ Micro_process_all <- function(		ref_area =  NULL,
 
 	FileToLoad <- data_frame(PATH= '', ID= '', Types= '', REF= '', year = '', freq = '', count_time = 0) %>% slice(-1)
 
-	ref_PUBLISHED <- read_csv(paste0(ilo:::path$micro, '_Admin/CMD/FileToLoad.csv'), col_types = cols_only(
-																				PATH = col_character()
+	ref_PUBLISHED <- read_csv(paste0(ilo:::path$micro, '_Admin/CMD/FileToLoad.csv'), col_types = cols(
+																				PATH = col_character(),
+																				ID = col_character(),
+																				Types = col_character(),
+																		REF = col_character()
 																)) %>% mutate(published = 'Yes')
 	
 	for (i in 1:nrow(wf)){	

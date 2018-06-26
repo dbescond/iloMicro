@@ -96,7 +96,9 @@ Micro_rebuild_series <- function(
 		}
 	
 	
-		if(nrow(ref_folder) == 0) {print(paste0('Master_', master_id[M], ' has no copy : OK'))} else{
+		if(nrow(ref_folder) == 0) {
+					print(paste0('Master_', master_id[M], ' has no copy : OK'))} 
+		else{
 	
 		for (fol in 1:nrow(ref_folder)){
 

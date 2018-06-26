@@ -27,7 +27,7 @@ if(!is.null(path)){
 options(warn = -1)			
 		df <- NULL
 		if(asFactor){	
-				df <- haven::read_dta(path) %>% mutate(ilo_time = ifelse(class(.$ilo_time) %in% 'numeric', as.character(ilo_time), haven::as_factor(ilo_time) %>% as.character))
+				df <- haven::read_dta(path) %>% mutate(ilo_time = ifelse(class(.$ilo_time) %in% 'numeric', as.character(ilo_time), haven::as_factor(ilo_time) %>% as.character)) %>% select(-contains('ilo_key'))
 		} else {
 			for (i in 1:length(path)){ 
 				df <- bind_rows(haven::read_dta(path[i]) %>% mutate(ilo_time = ifelse(class(.$ilo_time) %in% 'numeric', as.character(ilo_time), haven::as_factor(ilo_time) %>% as.character)), df)
@@ -43,7 +43,8 @@ options(warn = -1)
 options(warn = 0)
 		
 
-
+invisible(gc(reset = TRUE))
+invisible(gc(reset = TRUE))
 
 	
 	
@@ -64,14 +65,16 @@ options(warn = 0)
 
 
 	ilo_tpl$Variable 			<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Variable') 
-	ilo_tpl$Help_classif 		<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Help_classif') 
-	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 19)) 
+	# ilo_tpl$Help_classif 		<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Help_classif') 
+	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 20)) %>% filter(Is_Validate %in% c('TRUE', 'FALSE'))
 	ilo_tpl$Mapping_classif 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_classif') 
-	ilo_tpl$Mapping_rep_var 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_rep_var') 
+	# ilo_tpl$Mapping_rep_var 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_rep_var') 
 
 	if(testNote){ilo_tpl$Note <- ilo_tpl$Variable}
 	
 	assign('ilo_tpl', ilo_tpl, envir =globalenv())
+invisible(gc(reset = TRUE))
+invisible(gc(reset = TRUE))
 	# if(OpenFramework){
 		# shell.exec(file = file.path(tempdir(),'3_Framework.xlsx'))
 	# } else {

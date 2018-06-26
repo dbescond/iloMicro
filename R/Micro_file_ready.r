@@ -106,8 +106,10 @@ Micro_file_ready <- function(DDI = FALSE){
 	
 if(DDI){
 	
-	x <- create_ddi(as.tbl(read) %>% filter(processing_status %in% c("Published", "Ready"), on_ilostat %in% c('Yes','DDI_only')) %>% select(-on_ilostat))
+	x <- create_ddi(as.tbl(read) %>% filter(processing_status %in% c("Published", "Ready"), on_ilostat %in% c('Yes','DDI_only', 'No')))
 	wb <- createWorkbook()
+	
+	x <- x %>% mutate(Publish_DDI = on_ilostat %>% plyr:::mapvalues(c('Yes','DDI_only', 'No'), c('Yes','Yes', 'No'), warn_missing = FALSE))
 	
 	addWorksheet(wb, "DDI")
 	
@@ -138,6 +140,7 @@ if(DDI){
 			`Data Collection` = 'Data Collection', 
 			`ilo notes` = 'ilo notes',
 			`XXX11` ='variable available', 
+			`XXX12` ='PUBLISH DDI '
 			) %>% select(-value)
 	
 	writeData(wb,startRow = 1, colNames = FALSE,  "DDI", y)
@@ -180,7 +183,8 @@ create_ddi <- function(x){
 ############### sample count
 
 
-	x <- x %>% rename(repo = source) %>% separate(source_title, c('source', 'source.acronym', 'source.label'), sep = ' - ')	%>% 
+	x <- x %>% rename(repo = source) %>% 
+			separate(source_title, c('source', 'source.acronym', 'source.label'), sep = ' - ')	%>% 
 			mutate(source = str_trim(source) %>% str_sub(2,-2)) %>%  
 			left_join(filter(Ariane:::CODE_ORA$T_AGY_AGENCY, AGY_TYPE_CODE %in% 'NSO' ) %>% select(ref_area = AGY_COUNTRY_CODE, AGY_NAME1), by = "ref_area") %>% 
 			left_join(select(Ariane:::CODE_ORA$T_FRQ_FREQUENCY, freq_code = FRQ_CODE, label_freq = TEXT_EN), by = "freq_code") %>% 
@@ -224,7 +228,7 @@ test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>%
 tocheck <- NULL				
 	for (i in 1:nrow(test)){
 		test_dta <- NULL
-		try(test_dta <- haven::read_dta(test$file[i]))
+		try(test_dta <- haven::read_dta(test$file[i]) %>% select(-contains('ilo_key'), -contains('ilo_time'), -contains('job2_')) )
 		if(!is.null(test_dta)){
 			test$var_available[i] <- paste0(colnames(test_dta), collapse = '/') 
 			test$n_records[i] <-  nrow(test_dta)
@@ -272,7 +276,7 @@ tocheck <- NULL
 				select(-n_records) %>% 
 				mutate(important_ILO_notes = ifelse(important_ILO_notes %in% NA, '', important_ILO_notes)) %>%
 				rename(`ilo notes` = important_ILO_notes) %>%
-				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`, var_available)	
+				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`, var_available, on_ilostat)	
 
 	invisible(gc(reset = TRUE))
 	x

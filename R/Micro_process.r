@@ -286,7 +286,7 @@ Micro_process_volume <- function(	df,
 		filter_(FILTER)
 
 	if(nrow(df) == 0) {
-		print(paste0('ERROR to build indicator ', ref_indicator$ID, '!!! One component of the filter is probably missing !!!!'))
+		print(paste0('WARNINGS !!! To build indicator ', ref_indicator$ID, '!!! one major component of the filter is probably missing, plse check the dta mapping !!!!'))
 		return(NULL)
 	}
 

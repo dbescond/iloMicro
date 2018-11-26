@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Seychelles, 2016
 * DATASET USED: Seychelles, LFS, 2016
 * NOTES: 
-* Files created: Standard variables SEY_LFS_2016_FULL.dta and SEY_LFS_2016_ILO.dta
+* Files created: Standard variables SYC_LFS_2016_FULL.dta and SYC_LFS_2016_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 06 April 2018
-* Last updated: 06 April 2018
+* Last updated: 09 April 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -57,7 +57,6 @@ cd "$inpath"
 *			               Identifier ('ilo_key')		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	gen ilo_key=_n
 		lab var ilo_key "Key unique identifier per individual"
@@ -67,10 +66,11 @@ cd "$inpath"
 *		             	 Sample Weight ('ilo_wgt') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
+* Comment: - Final weight is obtained dividing the original variable weights into
+*            4 given that they correspond to the quarterly ones.
 
 	gen ilo_wgt=.
-	    replace ilo_wgt=weights 
+	    replace ilo_wgt=weights/4 
 		lab var ilo_wgt "Sample weight"
 	
 * ------------------------------------------------------------------------------
@@ -78,7 +78,6 @@ cd "$inpath"
 *			                Time period ('ilo_time')		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	gen ilo_time=1
 		lab def time_lab 1 "$time"
@@ -105,9 +104,9 @@ cd "$inpath"
 *			                     Sex ('ilo_sex') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
-	
-	destring sex, replace
+* Comment: Only observations with sex information is kept
+
+	destring sex, replace force
 	
 	gen ilo_sex=.
 	    replace ilo_sex=1 if sex==1            // Male
@@ -115,6 +114,8 @@ cd "$inpath"
 		        label define label_Sex 1 "1 - Male" 2 "2 - Female"
 		        label values ilo_sex label_Sex
 		        lab var ilo_sex "Sex"
+	
+	keep if ilo_sex!=.
 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -123,7 +124,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * Comment: - Information available for those aged 15 years old or more.
 
-    destring age, replace
+    destring age, replace force
 	
 	gen ilo_age=.
 	    replace ilo_age=age 
@@ -184,7 +185,7 @@ cd "$inpath"
 		replace ilo_edu_aggregate=2 if education_new==1
 		replace ilo_edu_aggregate=3 if education_new==2
 		replace ilo_edu_aggregate=4 if inlist(education_new,3,4,5,6,7)
-		replace ilo_edu_aggregate=5 if ilo_edu_aggregate==11
+		replace ilo_edu_aggregate=5 if ilo_edu_aggregate==.
 			    label def edu_aggr_lab 1 "1 - Less than basic" 2 "2 - Basic" 3 "3 - Intermediate" 4 "4 - Advanced" 5 "5 - Level not stated"
 			    label val ilo_edu_aggregate edu_aggr_lab
 			    label var ilo_edu_aggregate "Education (Aggregate level)"
@@ -195,6 +196,36 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 * Comment: - No information available.
+			
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if marital_new==1                            // Single
+		replace ilo_mrts_details=2 if marital_new==2                            // Married
+		replace ilo_mrts_details=3 if marital_new==3                            // Union / cohabiting
+		replace ilo_mrts_details=4 if marital_new==6                            // Widowed
+		replace ilo_mrts_details=5 if inlist(marital_new,4,5)                   // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"			
 			
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -216,7 +247,6 @@ cd "$inpath"
 *			      Working age population ('ilo_wap')	                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 	
 
 	gen ilo_wap=.
 		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
@@ -227,10 +257,10 @@ cd "$inpath"
 *			       Labour Force Status ('ilo_lfs')                             *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - to check: Employment follows the skip pattern proposed on the questionnaire which
+* Comment: - Employment follows the skip pattern proposed on the questionnaire which
 *          includes own-use production workers, (direct) volunteer work (good/
 *          services). It differs from the variable included into the dataset due to
-*          7 observations answering yes to question b3 but no to the rest of recory
+*          7 observations answering yes to question b3 but no to the rest of recovery
 *          questions.
 *          - Unemployment comprises those not in employment, who are looking for a
 *          job and who are available to work. It does not include future starters
@@ -266,7 +296,6 @@ cd "$inpath"
 *			       Status in employment ('ilo_ste')                            * 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
    * MAIN JOB:
    * ICSE 1993
@@ -299,12 +328,11 @@ cd "$inpath"
 *			            Economic activity ('ilo_eco')                          *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 
     *---------------------------------------------------------------------------
 	* ISIC REV 4
 	*---------------------------------------------------------------------------
-	destring c4_code, replace
+	destring c4_code, replace force
 	
 	gen econ_act_prim = int(c4_code/1000) if c4_code!=9999
 	
@@ -390,12 +418,11 @@ cd "$inpath"
 *			               Occupation ('ilo_ocu') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
     *---------------------------------------------------------------------------
 	* ISCO 08
 	*---------------------------------------------------------------------------
-	destring c1_code, replace
+	destring c1_code, replace force
 	
 	gen occu_prim = int(c1_code/100)
 	
@@ -471,15 +498,19 @@ cd "$inpath"
 *		               Hours of work ('ilo_how')  	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 				
     ***********
     * MAIN JOB:
     ***********
 	
+	if "$time" == "2014"{
+	   capture gen e1_a = e1_b
+	}
+	
 	* Hours USUALLY worked
 	gen ilo_job1_how_usual = .
 	    replace ilo_job1_how_usual = e1_a if ilo_lfs==1
+		replace ilo_job1_how_usual = . if ilo_job1_how_usual > 168
 	            lab var ilo_job1_how_usual "Weekly hours usually worked - main job"
 		  
 	gen ilo_job1_how_usual_bands=.
@@ -490,7 +521,7 @@ cd "$inpath"
 		replace ilo_job1_how_usual_bands=5 if ilo_job1_how_usual>34 & ilo_job1_how_usual<=39
 		replace ilo_job1_how_usual_bands=6 if ilo_job1_how_usual>39 & ilo_job1_how_usual<=48
 		replace ilo_job1_how_usual_bands=7 if ilo_job1_how_usual>48 & ilo_job1_how_usual!=.
-		replace ilo_job1_how_usual_bands=8 if ilo_job1_how_usual==. & ilo_lfs==1
+		replace ilo_job1_how_usual_bands=8 if ilo_job1_how_usual_bands==. & ilo_lfs==1
 		replace ilo_job1_how_usual_bands=. if ilo_lfs!=1
 		   	    lab def how_bands_usu 1 "No hours usually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 8 "Not elsewhere classified"		
 				lab val ilo_job1_how_usual_bands how_bands_usu
@@ -509,7 +540,7 @@ cd "$inpath"
 	    replace ilo_job1_how_actual_bands=5 if ilo_job1_how_actual>34 & ilo_job1_how_actual<=39
 	    replace ilo_job1_how_actual_bands=6 if ilo_job1_how_actual>39 & ilo_job1_how_actual<=48
 	    replace ilo_job1_how_actual_bands=7 if ilo_job1_how_actual>48 & ilo_job1_how_actual!=.
-	    replace ilo_job1_how_actual_bands=8 if ilo_job1_how_actual==. & ilo_lfs==1
+	    replace ilo_job1_how_actual_bands=8 if ilo_job1_how_actual_bands==. & ilo_lfs==1
 	    replace ilo_job1_how_actual_bands=. if ilo_lfs!=1
 		   	    lab def how_bands_act 1 "No hours actually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 8 "Not elsewhere classified"		
 				lab val ilo_job1_how_actual_bands how_bands_act
@@ -520,8 +551,8 @@ cd "$inpath"
 *			Working time arrangement ('ilo_job_time')		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Threshold is set at 40 hours usually worked  in main job per week 
-*            (based on the weighted median) .
+* Comment: - Threshold is set at 40 hours usually worked in main job per week 
+*            (based on the weighted median).
 			
 	gen ilo_job1_job_time=.
 		replace ilo_job1_job_time=2 if ilo_job1_how_usual>=40  & ilo_lfs==1                             // Full-time
@@ -579,11 +610,18 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * Comment: - Threshold is set at 35 hours usually worked per week in main job.
 
+	if "$time" == "2014"{
+	  * No information available
+	}
+
+	if "$time" != "2014"{
+	* 2015,22016
 	gen ilo_joball_tru = .
 	    replace ilo_joball_tru = 1 if ilo_job1_how_usual<=35  &  e1_e_new==1  & e1_f_new==1 & e_1_g_new>0 & ilo_lfs==1
 			    lab def tru_lab 1 "Time-related underemployed"
 			    lab val ilo_joball_tru tru_lab
 			    lab var ilo_joball_tru "Time-related underemployed"
+	}
 			
 *-------------------------------------------------------------------------------
 *-------------------------------------------------------------------------------
@@ -618,8 +656,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 *			   Duration of unemployment ('ilo_dur')  	                       * 
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: 
+* ------------------------------------------------------------------------------ 
 
 	* Detailed categories		
     gen ilo_dur_details=.
@@ -732,4 +769,3 @@ cd "$outpath"
 	*Save file only containing ilo_* variables
 	keep ilo*
 	save ${country}_${source}_${time}_ILO, replace
-		

@@ -2,10 +2,10 @@
 * DATASET USED: Viet Nam LFS 2013
 * NOTES: 
 * Files created: Standard variables on LFS Viet Nam 2013
-* Authors: DPAU
-* Who last updated the file: DPAU
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 01 February 2018
-* Last updated: 02 February 2018
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -23,7 +23,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "VNM"
 global source "LFS"
 global time "2013"
@@ -262,7 +262,36 @@ else{
 			    label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified" 
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
-
+			
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: There is no information on union/cohabiting
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if c8==1                                     // Single
+		replace ilo_mrts_details=2 if c8==2                                     // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if c8==3                                     // Widowed
+		replace ilo_mrts_details=5 if c8==4                                     // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb') 	[done]

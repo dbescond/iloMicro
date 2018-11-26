@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Angola, 2004
-* DATASET USED: Angola - Inquérito de Indicadores Básicos de Bem-Estar (QUIBB) - 2004
+* DATASET USED: Angola - InquÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢©rito de Indicadores BÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢¡sicos de Bem-Estar (QUIBB) - 2004
 * NOTES:
-* Authors: DPAU
-* Who last updated the file: DPAU 
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 29 August 2017
-* Last updated: 29 August 2017
+* Last updated: 19 June 2018
 ***********************************************************************************************
 
 
@@ -21,74 +21,31 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "AGO"
 global source "QUIBB"
 global time "2004"
-global inputFile "Ficheiro dos Individuos"
+global inputFile "Ficheiro_dos_Individuos.dta"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-			* Destring codes
-			destring code_level, replace
-			* Reshape
-				    foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-	use "$inputFile", clear
+	use ${inputFile}, clear
+	*renaming everything in lower case
 	rename *, lower  
+	
+********************************************************************************
+********************************************************************************
+*                                                                              *
+*			                      2. MAP VARIABLES                             *
+*                                                                              *
+********************************************************************************
+********************************************************************************
 
-
-***********************************************************************************************
-***********************************************************************************************
-
-*			2. MAP VARIABLES
-
-***********************************************************************************************
-***********************************************************************************************
 
 * ---------------------------------------------------------------------------------------------
 ***********************************************************************************************
@@ -227,13 +184,13 @@ cd "$inpath"
 	gen ilo_edu_isced11=.
 		replace ilo_edu_isced11=1 if c2==2  				// No schooling
 		replace ilo_edu_isced11=1 if (c3==1 | c3==19)	 	// No schooling
-		replace ilo_edu_isced11=2 if inrange(c5,2,5) 	 	// Early childhood education
-		replace ilo_edu_isced11=3 if inrange(c5,6,8)	  	// Primary education
-		replace ilo_edu_isced11=4 if inrange(c5,9,12)	  	// Lower secondary education
-		replace ilo_edu_isced11=5 if (c5==13)			    // Upper secondary education
+		replace ilo_edu_isced11=2 if inrange(c3,2,5) 	 	// Early childhood education
+		replace ilo_edu_isced11=3 if inrange(c3,6,8)	  	// Primary education
+		replace ilo_edu_isced11=4 if inrange(c3,9,12)	  	// Lower secondary education
+		replace ilo_edu_isced11=5 if (c3==13)			    // Upper secondary education
 		* replace ilo_edu_isced11=6 				 		// Post-secondary non-tertiary
-		replace ilo_edu_isced11=8 if inrange(c5,14,17)		// Bachelor or equivalent
-		replace ilo_edu_isced11=9 if c5==18     			// Master's or equivalent level
+		replace ilo_edu_isced11=8 if inrange(c3,14,17)		// Bachelor or equivalent
+		replace ilo_edu_isced11=9 if c3==18     			// Master's or equivalent level
 		replace ilo_edu_isced11=11 if ilo_edu_isced11==.	// Not elsewhere classified
 			label def isced_11_lab 1 "X - No schooling" 2 "0 - Early childhood education" 3 "1 - Primary education" 4 "2 - Lower secondary education" ///
 							5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - Short-cycle tertiary education" ///
@@ -241,7 +198,6 @@ cd "$inpath"
 			label val ilo_edu_isced11 isced_11_lab
 			lab var ilo_edu_isced11 "Education (ISCED 11)"
 
-		
 	gen ilo_edu_aggregate=.
 		replace ilo_edu_aggregate=1 if inlist(ilo_edu_isced11,1,2)  	// Less than basic
 		replace ilo_edu_aggregate=2 if inlist(ilo_edu_isced11,3,4)		// Basic
@@ -266,6 +222,37 @@ cd "$inpath"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: Only the aggregated variable has been computed because the original variable (b4) has married/union in the same category. 
+**         Furthermore, if we compute the detailed variable, there are only cases in the categories of single and widowed, with 72.03% of people not classified.
+ /*
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if  b4==1                                         // Single
+		*replace ilo_mrts_details=2 if                                               // Married
+		*replace ilo_mrts_details=3 if                                               // Union / cohabiting
+		replace ilo_mrts_details=4 if b4==5                                          // Widowed
+		replace ilo_mrts_details=5 if inlist(b4==3,4)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                 // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+	 */
+	
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(b4,1,3,4,5)                                   // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if b4==2                                   // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"					
+								
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -342,7 +329,7 @@ cd "$inpath"
 			replace ilo_job1_ste_icse93=1 if (inlist(e17,2,3) & ilo_lfs==1)			// Employees
 			* replace ilo_job1_ste_icse93=2 if (e17==1 & ilo_lfs==1)	        	// Employers
 			replace ilo_job1_ste_icse93=3 if (e17==1 & ilo_lfs==1)			    	// Own-account workers
-			replace ilo_job1_ste_icse93=4 if (e17==4 & ilo_lfs==1)              	// Members of producers’ cooperatives
+			replace ilo_job1_ste_icse93=4 if (e17==4 & ilo_lfs==1)              	// Members of producers cooperatives
 			replace ilo_job1_ste_icse93=5 if (e17==5 & ilo_lfs==1)	            	// Contributing family workers
 			replace ilo_job1_ste_icse93=6 if (ilo_job1_ste_icse93==. & ilo_lfs==1)  // Not classifiable
 				label def label_ilo_ste_icse93 1 "1 - Employees" 2 "2 - Employers" 3 "3 - Own-account workers" ///                      
@@ -369,9 +356,7 @@ cd "$inpath"
 	gen indu_code_prim=e8 if (ilo_lfs==1)
 	gen indu_code_sec=e26 if (ilo_lfs==1 & ilo_mjh==2)
 		
-		* Import value labels
-
-		append using `labels', gen (lab)
+ 
 
 		
 		* Primary activity
@@ -398,10 +383,16 @@ cd "$inpath"
 			replace ilo_job1_eco_isic4=19 if inrange(indu_code_prim,930,940)
 			replace ilo_job1_eco_isic4=20 if inrange(indu_code_prim,950,960)
 			replace ilo_job1_eco_isic4=21 if inrange(indu_code_prim,990,999)
-			replace ilo_job1_eco_isic4=22 if indu_code_prim==. & ilo_lfs==1 
+			replace ilo_job1_eco_isic4=22 if ilo_job1_eco_isic4==. & ilo_lfs==1 
 			replace ilo_job1_eco_isic4=. if ilo_lfs!=1
-				lab val ilo_job1_eco_isic4 isic4
-				lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4)"
+		        lab def eco_isic4_1digit 1 "A - Agriculture, forestry and fishing"	2 "B - Mining and quarrying"	3 "C - Manufacturing"	4 "D - Electricity, gas, steam and air conditioning supply" ///
+                                         5 "E - Water supply; sewerage, waste management and remediation activities"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles and motorcycles"	8 "H - Transportation and storage" ///
+                                         9 "I - Accommodation and food service activities"	10 "J - Information and communication"	11 "K - Financial and insurance activities"	12 "L - Real estate activities" ///
+                                         13 "M - Professional, scientific and technical activities"	14 "N - Administrative and support service activities"	15 "O - Public administration and defence; compulsory social security"	16 "P - Education" ///
+                                         17 "Q - Human health and social work activities"	18 "R - Arts, entertainment and recreation"	19 "S - Other service activities"	20 "T - Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use" ///
+                                         21 "U - Activities of extraterritorial organizations and bodies"	22 "X - Not elsewhere classified"		
+  	  		    lab val ilo_job1_eco_isic4 eco_isic4_1digit
+			    lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
 				
 		* Secondary activity
 		
@@ -427,10 +418,11 @@ cd "$inpath"
 			replace ilo_job2_eco_isic4=19 if inrange(indu_code_sec,930,940)
 			replace ilo_job2_eco_isic4=20 if inrange(indu_code_sec,950,960)
 			replace ilo_job2_eco_isic4=21 if inrange(indu_code_sec,990,999)
-			replace ilo_job2_eco_isic4=22 if indu_code_sec==. & ilo_lfs==1 & ilo_mjh==2
-					replace ilo_job2_eco_isic4=. if ilo_lfs!=1 & ilo_mjh!=2
-				lab val ilo_job1_eco_isic4 isic4
-				lab var ilo_job2_eco_isic4 "Economic activity (ISIC Rev. 4) in secondary job"
+			replace ilo_job2_eco_isic4=22 if ilo_job2_eco_isic4==. & ilo_lfs==1 & ilo_mjh==2
+			replace ilo_job2_eco_isic4=. if ilo_lfs!=1 & ilo_mjh!=2
+             * labels already defined for main job
+		        lab val ilo_job2_eco_isic4 eco_isic4_1digit
+			    lab var ilo_job2_eco_isic4 "Economic activity (ISIC Rev. 4) - second job"
 		
 		
 	* Aggregated level
@@ -755,8 +747,9 @@ cd "$inpath"
 		replace ilo_preveco_isic4=20 if inrange(preveco_cod,950,960)
 		replace ilo_preveco_isic4=21 if inrange(preveco_cod,990,999)
 		replace ilo_preveco_isic4=22 if preveco_cod==. & ilo_cat_une==1 & ilo_lfs==2
-			lab val ilo_preveco_isic4 isic4
-			lab var ilo_preveco_isic4 "Previous economic activity (ISIC Rev. 4)"
+                * labels already defined for main job
+		        lab val ilo_preveco_isic4 eco_isic4_1digit
+			    lab var ilo_preveco_isic4 "Previous economic activity (ISIC Rev. 4)"
 		
 		* Aggregate level
 		

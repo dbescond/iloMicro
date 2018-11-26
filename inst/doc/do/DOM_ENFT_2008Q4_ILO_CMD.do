@@ -2,10 +2,10 @@
 * DATASET USED: Dominican Republic LFS
 * NOTES: 
 * Files created: Standard variables on ENFT Dominican Republic
-* Authors: Podjanin, A.
-* Who last updated the file: Mabelin Villarreal Fuentes
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 14 September 2016
-* Last updated: 19 October 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "DOM"
 global source "ENFT"
 global time "2008Q4"
@@ -31,45 +31,7 @@ global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
 
-************************************************************************************
 
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-			* Destring codes
-			destring code_level, replace
-			* Reshape
-				    foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
 			
 *********************************************************************************************
 *********************************************************************************************
@@ -96,7 +58,7 @@ cd "$inpath"
  
 *-- weights and observations used depending on the quarter/year frequency to be analized
 *-- there's a mispelling error -> replace weights names
-
+ 
 if (`Y'>=2013){
   /*using the first dataset: Miembro.dta*/
   use "Miembros", clear
@@ -112,6 +74,7 @@ if (`Y'<=2012){
   rename *, lower
 }
   save "$inputFile", replace
+ 
 /*finally loading the created dataset*/  
   use "$inputFile", clear
   *renaming everything in lower case 
@@ -229,7 +192,7 @@ if (`Y'<=2012){
 *			Age ('ilo_age') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - Age above 99 not indicated, highest value corresponds to "99 y más (99 and more)"
+* Comment: - Age above 99 not indicated, highest value corresponds to "99 y mÃƒ¡s (99 and more)"
 
 	gen ilo_age=.
 	if (`Y'>=2013){

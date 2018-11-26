@@ -1,7 +1,7 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - ECUADOR, 2006Q4
 * DATASET USED: ECUADRO, ENEMDU, 2006Q4
 * NOTES: 
-* Files created: Standard variables ECU_ENEMDU_2006Q4_FULL.dta and ECU_ENEMDU_2006Q4_ILO.dta
+* Files created: Standard variables ECU_ENEMDU_2005Q4_FULL.dta and ECU_ENEMDU_2006Q4_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 
 * Starting Date: 20 April 2018
@@ -21,6 +21,7 @@ clear all
 set more off
 
  
+
 global path "J:\DPAU\MICRO"
 global country "ECU"
 global source "ENEMDU"
@@ -30,7 +31,7 @@ global inputFile "enemdu_pers_2006q4.dta"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
- 
+
 
 
 
@@ -91,6 +92,19 @@ cd "$inpath"
 		lab def time_lab 1 "${time}"
 		lab val ilo_time time_lab
 		lab var ilo_time "Time (Gregorian Calendar)"
+		
+		
+* ------------------------------------------------------------------------------
+*********************************************************************************************
+
+* create local for Year 
+
+*********************************************************************************************			
+decode ilo_time, gen(todrop)
+split todrop, generate(todrop_) parse(Q)
+destring todrop_1, replace force
+local Y = todrop_1 in 1
+		
 		
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -194,23 +208,30 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 *
  
-
-
-	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if nivinst==1
-		replace ilo_edu_isced97=2 if nivinst==3 
-		replace ilo_edu_isced97=3 if inlist(nivinst,2,4,5)
-		replace ilo_edu_isced97=4 if nivinst==6 
-		replace ilo_edu_isced97=5 if nivinst==7 
-		replace ilo_edu_isced97=6 if nivinst==8 
-		replace ilo_edu_isced97=7 if nivinst==9 
-		replace ilo_edu_isced97=8 if nivinst==10
+     gen ilo_edu_isced97=.
+		replace ilo_edu_isced97=1 if nivinst==1                                       // "X - No schooling"
+		replace ilo_edu_isced97=1 if nivinst==2 & inlist(anoinst,0,1,.)              // "X - No schooling"
+		replace ilo_edu_isced97=1 if nivinst==3 & inlist(anoinst,0,1,2,.)            // "X - No schooling"
+		replace ilo_edu_isced97=2 if inlist(nivinst,4,5) & inlist(anoinst,0,1,2,.)  // "0 - Pre-primary education"
+		replace ilo_edu_isced97=3 if nivinst==2 & inrange(anoinst,2,10)             // "1 - Primary education or first stage of basic education" 	
+		replace ilo_edu_isced97=3 if inlist(nivinst,4,5) & inrange(anoinst,3,10)   // "1 - Primary education or first stage of basic education" 	
+		replace ilo_edu_isced97=3 if nivinst==6 & inlist(anoinst,0,1,2,.)          // "1 - Primary education or first stage of basic education"
+		replace ilo_edu_isced97=4 if nivinst==6 & inrange(anoinst,3,10)	           // "2 - Lower secondary education or second stage of basic education" 
+		replace ilo_edu_isced97=4 if nivinst==7 & inlist(anoinst,0,1,2,.)          // "2 - Lower secondary education or second stage of basic education" 
+		replace ilo_edu_isced97=5 if nivinst==7 & inrange(anoinst,3,10)            // "3 - Upper secondary education"
+		replace ilo_edu_isced97=5 if nivinst==9 & inlist(anoinst,0,1,2,.)          // "3 - Upper secondary education"
+		replace ilo_edu_isced97=5 if nivinst==8 & inlist(anoinst,0,1,.)            // "3 - Upper secondary education"
+		replace ilo_edu_isced97=6 if nivinst==8 & inrange(anoinst,2,10)            // "4 - Post-secondary non-tertiary education"
+		replace ilo_edu_isced97=7 if nivinst==9 & inrange(anoinst,3,10)            // "5 - First stage of tertiary education (not leading directly to an advanced research qualification)"
+		replace ilo_edu_isced97=7 if nivinst==10 & inlist(anoinst,0,.)             // "5 - First stage of tertiary education (not leading directly to an advanced research qualification)"
+		replace ilo_edu_isced97=8 if nivinst==10 & inrange(anoinst,1,10)           // "6 - Second stage of tertiary education (leading to an advanced research qualification)"
 		replace ilo_edu_isced97=9 if ilo_edu_isced97==.
 			label def isced_97_lab 1 "X - No schooling" 2 "0 - Pre-primary education" 3 "1 - Primary education or first stage of basic education" 4 "2 - Lower secondary education or second stage of basic education" ///
 							5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - First stage of tertiary education (not leading directly to an advanced research qualification)" ///
 							8 "6 - Second stage of tertiary education (leading to an advanced research qualification)" 9 "UNK - Level not stated"
 			label val ilo_edu_isced97 isced_97_lab
 			lab var ilo_edu_isced97 "Education (ISCED 97)"
+
 
 
  		
@@ -237,24 +258,70 @@ cd "$inpath"
 			    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+
+** Comment: there is no information on marital status in 2004 and before. 
+
+if `Y' == 2006{
+
+gen mrt = pe13c
+
+}
+
+if `Y' == 2005{
+
+gen mrt = pe4a
+
+}
+
+
+if `Y' > 2004 {		
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if mrt==6                                          // Single
+		replace ilo_mrts_details=2 if mrt==1                                          // Married
+		replace ilo_mrts_details=3 if mrt==5                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if mrt==4                                          // Widowed
+		replace ilo_mrts_details=5 if inlist(mrt,2,3)                                 // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                    // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
 				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+}								
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-*Comment: I am not sure who is the respondent of this question. The questionnaire says that this question is target to the boss or spouse (??). 	
-	
-	
-	/*
+
+** Comment: This variable cannot be computed because it does not refer to the respondent. 
+
+/*	
+if `Y' == 2006 {
 gen ilo_dsb_aggregate=.
 	    replace ilo_dsb_aggregate=1 if pe13d==2                     // Persons without disability
 		replace ilo_dsb_aggregate=2 if pe13d==1	                    // Persons with disability
 				label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
 				label val ilo_dsb_aggregate dsb_lab
 				label var ilo_dsb_aggregate "Disability status (Aggregate)"
-		*/	
-		
+		 
+	}	
+	*/
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *
@@ -271,7 +338,11 @@ gen ilo_dsb_aggregate=.
 
 	gen ilo_wap=.
 		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
-			    label var ilo_wap "Working age population" 
+				
+			label def ilo_wap_lab 1 "Working age population"
+			label val ilo_wap ilo_wap_lab
+			label var ilo_wap "Working age population" //15+ population
+
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -302,25 +373,7 @@ gen ilo_dsb_aggregate=.
 	
 	
 	
-	** Comment: Do we have to define this variable? (nat_lfs) The definition of "Desempleo oculto" is like OLF but including future starters (in this case, 
-	**                                              they would be the same since we do not have information about future starters) [definition on p.8/48 "Presentacion Empleo_0316.pdf", 2016Q1]
-	
-	
-	/*
-	* Unemployment on the national level defined as the sum of "open unemployment" (desempleo abierto) and "hidden unemployment" (desempleo oculto)
-	
-	gen nat_lfs=.
-		replace nat_lfs=1 if ilo_lfs==1 /* as same definition being used according to the documentation */
-		replace nat_lfs=2 if pe30a!=9 | deseatra==1
-		replace nat_lfs=3 if deseatra==2 | inrange(p34,8,12) //why this options of p34??
-			lab val nat_lfs label_ilo_lfs
-			lab var nat_lfs "Labour Force Status (national definition)" 
-			
-		*Note that the variable "desem" (for "desempleo"), which has already been defined coincides perfectly with the value of nat_lfs==2 once the definition from 
-			* the technical documentation is being followed for the definition of nat_lfs
-			* idem for empleo
-		*/	
-			
+ 			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Multiple job holders ('ilo_mjh')  
@@ -493,7 +546,7 @@ gen ilo_dsb_aggregate=.
 	
 	* 2-digit level
 	
-	gen indu_code_sec=int(rama/100) if ilo_lfs==1 & ilo_mjh==2 & rama!=900
+	gen indu_code_sec=int(ramas/100) if ilo_lfs==1 & ilo_mjh==2 & ramas!=900
 	
 	gen ilo_job2_eco_isic3_2digits = .
 	    replace ilo_job2_eco_isic3_2digits = indu_code_sec  if ilo_mjh==2
@@ -619,7 +672,7 @@ gen ilo_dsb_aggregate=.
 
 	* 2-digit level 
 	
-	gen occ_code_sec=int(grupos/100) if ilo_lfs==1 & ilo_mjh==2
+	gen occ_code_sec=int(grupos/100) if  ilo_mjh==2
 
     gen ilo_job2_ocu_isco88_2digits = . 
 	    replace ilo_job2_ocu_isco88_2digits = occ_code_sec if ilo_mjh==2
@@ -702,7 +755,7 @@ gen ilo_dsb_aggregate=.
 	
 	* Hours USUALLY worked
 	gen ilo_job1_how_usual = .
-	    replace ilo_job1_how_usual = hortrahp if ilo_lfs==1
+	    replace ilo_job1_how_usual = hortrahp if ilo_lfs==1 & hortrahp!=999
 	            lab var ilo_job1_how_usual "Weekly hours usually worked - main job"
 		  
 	gen ilo_job1_how_usual_bands=.
@@ -728,7 +781,7 @@ gen ilo_dsb_aggregate=.
 	
 	* Hours USUALLY worked
 	gen ilo_job2_how_usual = .
-	    replace ilo_job2_how_usual = hortrahs if ilo_mjh==2
+	    replace ilo_job2_how_usual = hortrahs if ilo_mjh==2 & hortrahs!=999
 	            lab var ilo_job2_how_usual "Weekly hours usually worked - second job"
 					 
 	gen ilo_job2_how_usual_bands=.
@@ -750,8 +803,12 @@ gen ilo_dsb_aggregate=.
     ***********
 	
 	* Hours USUALLY worked
-    egen ilo_joball_how_usual = rowtotal(hortrahp hortrahs hortraho), m
-	    *replace ilo_joball_how_usual =       if ilo_lfs==1
+	
+	gen hours_usu_mj = hortrahp if hortrahp!=999 // usually hours main job
+	gen hours_usu_sj = hortrahs if hortrahs!=999  // usually hours second job
+	gen hours_usu_oj = hortraho if hortraho!=999  // usually hours all jobs
+	
+    egen ilo_joball_how_usual = rowtotal(hours_usu_mj hours_usu_sj hours_usu_oj), m
 		        lab var ilo_joball_how_usual "Weekly hours usually worked - all jobs"
 		 
 	gen ilo_joball_how_usual_bands=.
@@ -771,7 +828,7 @@ gen ilo_dsb_aggregate=.
 				
 	* Hours ACTUALLY worked
 	gen ilo_joball_how_actual = .
-	    replace ilo_joball_how_actual = hortrasa if ilo_lfs==1
+	    replace ilo_joball_how_actual = hortrasa if ilo_lfs==1 & hortrasa!=999
 		        lab var ilo_joball_how_actual "Weekly hours actually worked - all jobs"
 		 
 	gen ilo_joball_how_actual_bands=.
@@ -786,8 +843,8 @@ gen ilo_dsb_aggregate=.
 		replace ilo_joball_how_actual_bands=. if ilo_lfs!=1
 		   	    lab def how_bands_act 1 "No hours actually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 8 "Not elsewhere classified"		
 			 	lab val ilo_joball_how_actual_bands how_bands_act
-				lab var ilo_joball_how_actual_bands "Weekly hours actually worked bands - all jobs"			
-		
+				lab var ilo_joball_how_actual_bands "Weekly hours actually worked bands - all jobs"		
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Working time arrangement ('ilo_job_time')  
@@ -811,22 +868,14 @@ gen ilo_dsb_aggregate=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
 	
-* Comment:DOUBT: I believe that it is not possible to compute this variable
-*         the only information associated to type of contract is in variable "estabil"
-*         there is a category named "Nombramiento" which is refered to public servants
+* Comment: This variable is not possible to compute because 
+*         the only information associated to type of contract is in variable "estabil", and
+*         there is a category named "Nombramiento" which is refered to public servants.
 *         In Ecuador, this category can be divided into two subcategories: a) permanent, b) temporary
 *         but there is no information on this division.
 *         Therefore, we do not have enought information to compute type of contrat
 	
-	/*
-	gen ilo_job1_job_contract=.
-		replace ilo_job1_job_contract=1 if ilo_lfs==1               				// Permanent
-		replace ilo_job1_job_contract=2 if ilo_lfs==1               				// Temporary
-		replace ilo_job1_job_contract=3 if ilo_job1_job_contract==. & ilo_lfs==1  	// Unknown
-			    lab def job_contract_lab 1 "1 - Permanent" 2 "2 - Temporary" 3 "3 - Unknown"
-			    lab val ilo_job1_job_contract job_contract_lab
-			    lab var ilo_job1_job_contract "Job (Type of contract)"
-	*/
+	 
 	
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -836,7 +885,7 @@ gen ilo_dsb_aggregate=.
 * Comment:
 /* Useful questions:
           *** MAIN JOB ***
-          - Institutional sector: [catetrab ]
+          - Institutional sector: [catetrab]
 		  - Private household identification: 
 		  - Destination of production: [no info]
 		  - Bookkeeping: [pe48]
@@ -844,7 +893,7 @@ gen ilo_dsb_aggregate=.
 		  - Status in employment: [catetrab]
 		  - Social security contribution (Proxy: pension funds): pe42f
 		  - Place of work: [pe46]
-		  - Size: npertra
+		  - Size: pertrabn, npertra [skip pattern: it the size is higher than 100 (pertrabn), question npertra is not asked]
 		  - Paid annual leave: [pe42d]
 		  - Paid sick leave: [pe42g]
 		  
@@ -874,11 +923,10 @@ gen ilo_dsb_aggregate=.
 	    replace ilo_job1_ife_prod=3 if ilo_lfs==1 & (ilo_job1_eco_isic3_2digits==95 | ilo_job1_ocu_isco88_2digits==62) // 3 - Household
 		
 		                               
-	*DOUBT: Can I consider "account notebook only" as formal sector?? (pe48==2) 							   
-		replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & inlist(pe48,1,2)            // "2 - Formal"  
-		replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & !inlist(pe48,1,2) & pe49==1 // "2 - Formal"
-	    replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & !inlist(pe48,1,2) & pe49!=1 & ilo_job1_ste_icse93==1 & pe42f==1  // "2 - Formal"
-	    replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & !inlist(pe48,1,2) & pe49!=1 & pe46==1 & (npertra>=6) // "2 - Formal"
+		replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & pe48==1            // "2 - Formal"  
+		replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & pe48!=1 & pe49==1 // "2 - Formal"
+	    replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & pe48!=1 & pe49!=1 & ilo_job1_ste_icse93==1 & pe42f==1  // "2 - Formal"
+	    replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & pe48!=1 & pe49!=1 & pe46==1 & (pertrabn==2 | npertra>=6) // "2 - Formal"
 
 									  
 		replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,2,3) // "1 - Informal"
@@ -1134,7 +1182,7 @@ gen ilo_dsb_aggregate=.
 			
     * 1-digit level
 	gen ilo_prevocu_isco88=.
-	    replace ilo_prevocu_isco88=11 if inlist(ilo_prevocu_isco88_2digits,99,.) & ilo_lfs==2 & ilo_cat_une==1                          // Not elsewhere classified
+	    replace ilo_prevocu_isco88=11 if inlist(ilo_prevocu_isco88_2digits,99,.) & ilo_lfs==2 & ilo_cat_une==1                       // Not elsewhere classified
 		replace ilo_prevocu_isco88=int(ilo_prevocu_isco88_2digits/10) if (ilo_prevocu_isco88==. & ilo_lfs==2 & ilo_cat_une==1)      // The rest of the occupations
 		replace ilo_prevocu_isco88=10 if (ilo_prevocu_isco88==0 & ilo_lfs==2 & ilo_cat_une==1)                                      // Armed forces
                 * labels already defined for main job
@@ -1172,11 +1220,6 @@ gen ilo_dsb_aggregate=.
 ********************************************************************************
 * ------------------------------------------------------------------------------				
 
-* ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-*		Degree of labour market attachment ('ilo_olf_dlma') 	               * 
-* ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -1184,8 +1227,8 @@ gen ilo_dsb_aggregate=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *
-* DOUBT: I think that this variable is better not to compute it (93.16% is not elsewhere classified)
-* Comment: REVISE. Variable "deseatra" indicates availability and willingness at the same time. 
+* Comment: It is better not to compute this variable (93.16% is not elsewhere classified)
+* Comment: Variable "deseatra" indicates availability and willingness at the same time. 
 *                  There is a skip pattern for people seeking, they are not asked about availability or willingness. 
  
 	

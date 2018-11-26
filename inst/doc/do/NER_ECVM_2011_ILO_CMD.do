@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Niger, 2011
-* DATASET USED: Niger - Enquête nationale sur les Conditions de Vie des Ménages (ECVM)  - 2011
+* DATASET USED: Niger - EnquÃªte nationale sur les Conditions de Vie des MÃ©nages (ECVM)  - 2011
 * NOTES:
-* Authors: DPAU
-* Who last updated the file: DPAU 
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 31 August 2017
-* Last updated: 31 August 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "NER"
 global source "ECVM"
 global time "2011"
@@ -30,56 +30,14 @@ global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-			* Destring codes
-			destring code_level, replace
-			* Reshape
-				    foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-	use "$inputFile", clear
+	use ${inputFile}, clear
+	*renaming everything in lower case
 	rename *, lower  
+	
 
 
 ***********************************************************************************************
@@ -268,6 +226,35 @@ cd "$inpath"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: There is no information on union/cohabiting
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if  ms01q15==1                               // Single
+		replace ilo_mrts_details=2 if  inlist(ms01q15,2,3)                      // Married
+		*replace ilo_mrts_details=3 if   ms01q15==                              // Union / cohabiting
+		replace ilo_mrts_details=4 if  ms01q15==4                               // Widowed
+		replace ilo_mrts_details=5 if  inlist(ms01q15,5,6)                      // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -342,7 +329,7 @@ cd "$inpath"
 			replace ilo_job1_ste_icse93=1 if (inlist(ms04q25,1,2,3,4,5,9) & ilo_lfs==1)	// Employees
 			replace ilo_job1_ste_icse93=2 if (ms04q25==6 & ilo_lfs==1)	            	// Employers
 			replace ilo_job1_ste_icse93=3 if (ms04q25==7 & ilo_lfs==1)  	    		// Own-account workers
-			* replace ilo_job1_ste_icse93=4 if 						              		// Members of producers’ cooperatives
+			* replace ilo_job1_ste_icse93=4 if 						              		// Members of producersâ€™ cooperatives
 			replace ilo_job1_ste_icse93=5 if (ms04q25==8 & ilo_lfs==1)            		// Contributing family workers
 			replace ilo_job1_ste_icse93=6 if (ilo_job1_ste_icse93==. & ilo_lfs==1)  	// Not classifiable
 				label def label_ilo_ste_icse93 1 "1 - Employees" 2 "2 - Employers" 3 "3 - Own-account workers" ///                      
@@ -371,10 +358,7 @@ cd "$inpath"
 	gen indu_code_prim=ms04q24 if (ilo_lfs==1)
 	gen indu_code_sec=ms04q52 if (ilo_lfs==1 & ilo_mjh==2)
 		
-		* Import value labels
-
-		append using `labels', gen (lab)
-
+ 
 		
 		* Primary activity
 		
@@ -403,8 +387,14 @@ cd "$inpath"
 			replace ilo_job1_eco_isic4=22 if indu_code_prim==999
 			replace ilo_job1_eco_isic4=22 if indu_code_prim==. & ilo_lfs==1 
 			replace ilo_job1_eco_isic4=. if ilo_lfs!=1
-				lab val ilo_job1_eco_isic4 isic4
-				lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4)"
+			    lab def eco_isic4_1digit 1 "A - Agriculture, forestry and fishing"	2 "B - Mining and quarrying"	3 "C - Manufacturing"	4 "D - Electricity, gas, steam and air conditioning supply" ///
+                                         5 "E - Water supply; sewerage, waste management and remediation activities"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles and motorcycles"	8 "H - Transportation and storage" ///
+                                         9 "I - Accommodation and food service activities"	10 "J - Information and communication"	11 "K - Financial and insurance activities"	12 "L - Real estate activities" ///
+                                         13 "M - Professional, scientific and technical activities"	14 "N - Administrative and support service activities"	15 "O - Public administration and defence; compulsory social security"	16 "P - Education" ///
+                                         17 "Q - Human health and social work activities"	18 "R - Arts, entertainment and recreation"	19 "S - Other service activities"	20 "T - Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use" ///
+                                         21 "U - Activities of extraterritorial organizations and bodies"	22 "X - Not elsewhere classified"		
+  	  		    lab val ilo_job1_eco_isic4 eco_isic4_1digit
+			    lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
 				
 		* Secondary activity
 		
@@ -432,10 +422,10 @@ cd "$inpath"
 			replace ilo_job2_eco_isic4=21 if inrange(indu_code_sec,430,439)
 			replace ilo_job2_eco_isic4=22 if indu_code_sec==999
 			replace ilo_job2_eco_isic4=22 if indu_code_sec==. & ilo_lfs==1 & ilo_mjh==2
-					replace ilo_job2_eco_isic4=. if ilo_lfs!=1 & ilo_mjh!=2
-				lab val ilo_job1_eco_isic4 isic4
-				lab var ilo_job2_eco_isic4 "Economic activity (ISIC Rev. 4) in secondary job"
-		
+		    replace ilo_job2_eco_isic4=. if ilo_lfs!=1 & ilo_mjh!=2
+	                * labels already defined for main job
+		        lab val ilo_job2_eco_isic4 eco_isic4_1digit
+			    lab var ilo_job2_eco_isic4 "Economic activity (ISIC Rev. 4) - second job"
 		
 	* Aggregated level
 	
@@ -449,11 +439,11 @@ cd "$inpath"
 			replace ilo_job1_eco_aggregate=5 if inrange(ilo_job1_eco_isic4,7,14)
 			replace ilo_job1_eco_aggregate=6 if inrange(ilo_job1_eco_isic4,15,21)
 			replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_isic4==22
-				lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-									5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-									6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
-				lab val ilo_job1_eco_aggregate eco_aggr_lab
-				lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+			   lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+			  					    5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								    6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			   lab val ilo_job1_eco_aggregate eco_aggr_lab
+			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 				
 		* Secondary activity
 		
@@ -465,9 +455,9 @@ cd "$inpath"
 			replace ilo_job2_eco_aggregate=5 if inrange(ilo_job2_eco_isic4,7,14)
 			replace ilo_job2_eco_aggregate=6 if inrange(ilo_job2_eco_isic4,15,21)
 			replace ilo_job2_eco_aggregate=7 if ilo_job2_eco_isic4==22
-				* value labels already defined				
-				lab val ilo_job2_eco_aggregate eco_aggr_lab
-				lab var ilo_job2_eco_aggregate "Economic activity (Aggregate) in secondary job"
+               * labels already defined for main job
+	           lab val ilo_job2_eco_aggregate eco_aggr_lab
+			   lab var ilo_job2_eco_aggregate "Economic activity (Aggregate) - second job"	
 
 				
 * -------------------------------------------------------------------------------------------

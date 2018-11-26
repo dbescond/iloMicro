@@ -45,7 +45,7 @@ setwd(init)
 Micro_prepare_MEX_ENOE <- function(ref_area, source, time, wd){
 
 	if(wd %in% 'default') {
-		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI'))	
+		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI/Data'))	
 	} else {
 	setwd(wd)
 	}
@@ -217,7 +217,7 @@ Micro_prepare_CAN_LFS <- function(ref_area, source, time, wd){
 Micro_prepare_BRA_PNADC <- function(ref_area, source, time, wd){
 
 	if(wd %in% 'default') {
-		setwd( paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI'))	
+		setwd( paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI/Data'))	
 	} else {
 	setwd(wd)
 	}
@@ -311,7 +311,7 @@ Micro_prepare_BRA_PNADC <- function(ref_area, source, time, wd){
 Micro_prepare_ESP_EPA <- function(ref_area, source, time, wd){
 	
 	if(wd %in% 'default') {
-		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI'))	
+		setwd(paste0(ilo:::path$micro,ref_area,'/',source,'/', time, '/ORI/Data'))	
 	} else {
 	setwd(wd)
 	}

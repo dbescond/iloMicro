@@ -1,11 +1,12 @@
+
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Philippines
 * DATASET USED: Philippines LFS 
 * NOTES: 
 * Files created: Standard variables on LFS Philippines
-* Authors: Podjanin
-* Who last updated the file: Podjanin, A.
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 30 March 2017
-* Last updated: 10 July 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -18,7 +19,7 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "PHL"
 global source "LFS"
 global time "2006Q4"
@@ -66,8 +67,9 @@ cd "$inpath"
 * Don't define ilo_* variables for overseas workers and people employed in Filipino embassies and consulates
 	capture gen  ILO_EXCLUDE = c10_cnwr  
 	capture gen  ILO_EXCLUDE = c10_conwr
-	capture gen  ILO_EXCLUDE = cc10_conwr	
-	gen considered=1 if !inlist(ILO_EXCLUDE,1,2,3)	
+	capture gen  ILO_EXCLUDE = cc10_conwr
+	capture gen  ILO_EXCLUDE = c11_conwr
+	gen considered=1 if !inlist(ILO_EXCLUDE,1,3)	
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -104,6 +106,7 @@ cd "$inpath"
 	
 	capture gen  ilo_WEIGTH = pwgt
 	capture gen  ilo_WEIGTH  = cfwgt
+	capture gen  ilo_WEIGTH = fwgt
 	
 	gen ilo_wgt=ilo_WEIGTH		
 		lab var ilo_wgt "Sample weight"
@@ -138,7 +141,7 @@ cd "$inpath"
 *			Geographical coverage ('ilo_geo') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*
+/*
 	capture gen  ilo_URB2 = urb2k70
 	capture gen  ilo_URB2  = urb2k
 	
@@ -148,7 +151,7 @@ cd "$inpath"
 			lab var ilo_geo "Geographical coverage"
 	
 	drop ilo_URB2 
-
+*/
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Sex ('ilo_sex') [done]
@@ -157,6 +160,7 @@ cd "$inpath"
 *
 * Comment: 
 	capture gen ilo_SEX = c06_sex 
+	capture gen ilo_SEX = cc06_sex
 	capture gen	ilo_SEX = c04_sex
 	
 		gen ilo_sex=ilo_SEX
@@ -172,6 +176,7 @@ cd "$inpath"
 *
 * Comment: 
 	capture gen ilo_AGE = c07_age 
+	capture gen ilo_AGE = cc07_age
 	capture gen	ilo_AGE = c05_age
 
 	gen ilo_age=ilo_AGE
@@ -269,8 +274,11 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 *
 * Comment: 
-		capture gen ilo_SCHOOL_STATUS = a02_csch 
+
+		capture gen ilo_SCHOOL_STATUS = a02_csch
+		capture gen ilo_SCHOOL_STATUS = acursch 
 		capture gen	ilo_SCHOOL_STATUS = c08_cursch
+		capture gen	ilo_SCHOOL_STATUS = c10_cursch
 		
 		
 		gen ilo_edu_attendance=ilo_SCHOOL_STATUS		
@@ -279,7 +287,46 @@ cd "$inpath"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)" 
 		drop ilo_SCHOOL_STATUS
-		
+	
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+
+if time <= "2005Q4"{
+	gen marital = c08_mstat
+}	
+
+
+if time >= "2006Q1"{
+	gen marital = cc08_mstat
+}	
+
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if marital==1                              // Single
+		replace ilo_mrts_details=2 if marital==2                              // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if marital==3                              // Widowed
+		replace ilo_mrts_details=5 if marital==4                              // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+			
+drop marital			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') [no info available]
@@ -309,7 +356,6 @@ cd "$inpath"
 
 	gen ilo_wap=.
 		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
-		replace ilo_wap=0 if ilo_age<15
 			label def ilo_wap_lab 1 "Working age population"
 			label val ilo_wap ilo_wap_lab
 			label var ilo_wap "Working age population" //15+ population
@@ -327,16 +373,25 @@ cd "$inpath"
 				* NSO exlcudes overseas worker (whatever is inlist(c10_conwr,1,2,3) ) -- given that there is no info about them (and they fall into category "outside 
 							* the labour force) -> check whether to keep them or not
 	capture gen ilo_WORK = c13_work 
+	capture gen ilo_WORK = cc13_work 
+	capture gen ilo_WORK = c12_work
 	capture gen	ilo_WORK = c11_work
 	capture gen ilo_JOB = c14_job 
+	capture gen ilo_JOB = cc14_job 
 	capture gen	ilo_JOB = c12_job
+	capture gen	ilo_JOB = c13_job
 	capture gen ilo_LOOK_FOR_WORK = c30_lookw 
 	capture gen ilo_LOOK_FOR_WORK = c38_lokw  
+	capture gen ilo_LOOK_FOR_WORK = cc38_lookw
+	capture gen ilo_LOOK_FOR_WORK = c31_lookw
 	capture gen ilo_AVAILABLE_FOR_WORK = c36_avail 
 	capture gen ilo_AVAILABLE_FOR_WORK = c37_avil 
+	capture gen ilo_AVAILABLE_FOR_WORK = cc37_avail
+	capture gen ilo_AVAILABLE_FOR_WORK = c37_avail
 	capture gen ilo_WYNOT = c34_wynot 
 	capture gen ilo_WYNOT = c42_wynt 
-	
+	capture gen ilo_WYNOT = cc42_wynot
+	capture gen ilo_WYNOT = c35_wynot
 
 	
 	gen ilo_lfs=.
@@ -366,7 +421,7 @@ cd "$inpath"
 				* nat_lfs coincides perfectly with "newempstat" and allows to reproduce numbers in national report (numbers compared for 2016Q4)
 	
 	drop 	ilo_WORK ilo_JOB ilo_LOOK_FOR_WORK	
-												
+											
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Multiple job holders ('ilo_mjh') [done]
@@ -376,6 +431,8 @@ cd "$inpath"
 * Comment: 
 	capture gen ilo_OJOB = c28_ojob 
 	capture gen ilo_OJOB = c26_ojob  
+	capture gen ilo_OJOB = cc28_ojob
+	capture gen ilo_OJOB = c27_ojob
 	
 	gen ilo_mjh=.
 		replace ilo_mjh=1 if ilo_OJOB==2
@@ -402,6 +459,8 @@ cd "$inpath"
 	* Primary activity
 	capture gen ilo_PCLASS = c23_pclass 
 	capture gen ilo_PCLASS = c19pclas  
+	capture gen ilo_PCLASS = cc19_pclass
+	capture gen ilo_PCLASS = c24_pclass
 	
 		gen ilo_job1_ste_icse93=.
 			replace ilo_job1_ste_icse93=1 if inlist(ilo_PCLASS,0,1,2)
@@ -420,8 +479,8 @@ cd "$inpath"
 	
 		gen ilo_job1_ste_aggregate=.
 			replace ilo_job1_ste_aggregate=1 if ilo_job1_ste_icse93==1
-			replace ilo_job1_ste_aggregate=2 if inlist(ilo_job1_ste_icse93,2,3,4)
-			replace ilo_job1_ste_aggregate=3 if inlist(ilo_job1_ste_icse93,5,6)
+			replace ilo_job1_ste_aggregate=2 if inlist(ilo_job1_ste_icse93,2,3,4,5)
+			replace ilo_job1_ste_aggregate=3 if inlist(ilo_job1_ste_icse93,6)
 				lab def ste_aggr_lab 1 "1 - Employees" 2 "2 - Self-employed" 3 "3 - Not elsewhere classified"
 				lab val ilo_job1_ste_aggregate ste_aggr_lab
 			label var ilo_job1_ste_aggregate "Status in employment (Aggregate)"
@@ -441,7 +500,9 @@ cd "$inpath"
 
 
 		capture gen ilo_PKB = c16_pkb 
+		capture gen ilo_PKB = c17f2_pkb
 		capture gen ilo_PKB = c18_pkb  
+		capture gen ilo_PKB = cc18_pkb
 	
 		gen indu_code_prim=int(ilo_PKB) if ilo_lfs==1 
 			
@@ -549,6 +610,8 @@ cd "$inpath"
 * Comment: 
 	
 		capture gen ilo_PROC = c14_procc 
+		capture gen ilo_PROC = c15f2_procc
+		capture gen ilo_PROC = cc16_procc
 		capture gen ilo_PROC = c16_proc  
 	
 		gen occ_code_prim=ilo_PROC if ilo_lfs==1 
@@ -652,9 +715,13 @@ cd "$inpath"
 			* worked in first job -> consider both variables
 			
 		capture gen ilo_PHOURS = c19_phours 
+		capture gen ilo_PHOURS = c19_pnwhrs
 		capture gen ilo_PHOURS = c22_phrs  
+		capture gen ilo_PHOURS = cc22_phours  
 		capture gen ilo_THOURS = c28_thours 
 		capture gen ilo_THOURS = a04_thrs  
+		capture gen ilo_THOURS = athours
+		capture gen ilo_THOURS = c29_thours
 				
 	* Actual hours worked 
 	
@@ -737,7 +804,9 @@ cd "$inpath"
 * Comment:
 		
 		capture gen ilo_NATEM = c17_natem 
-		capture gen ilo_NATEM = c20_ntem  
+		capture gen ilo_NATEM = c20_ntem 
+		capture gen ilo_NATEM = cc20_natem
+		capture gen ilo_NATEM = c18_natem
 		
 		
 		gen ilo_job1_job_contract=ilo_NATEM
@@ -791,7 +860,8 @@ cd "$inpath"
 
 		capture gen ilo_PBASIC = c25_pbasic 
 		capture gen ilo_PBASIC = c26_pbis  	
-	
+		capture gen ilo_PBASIC = cc27_pbasic
+		capture gen ilo_PBASIC = c26_pbasic
 	* Primary employment 
 	
 			* Monthly earnings of employees
@@ -862,7 +932,9 @@ cd "$inpath"
 			* note that highest value appearing is 98 weeks, which is less than 24 months - therefore no observations for the category "24 months or more" for 
 				* the more detailed classification
 		capture gen ilo_WEEKS = c33_weeks 
-		capture gen ilo_WEEKS = c40_wks  	
+		capture gen ilo_WEEKS = c40_wks  
+		capture gen ilo_WEEKS = cc40_weeks
+		capture gen ilo_WEEKS = c34_weeks
 		
 	gen ilo_dur_details=.
 		replace ilo_dur_details=1 if inrange(ilo_WEEKS,1,3)
@@ -899,7 +971,9 @@ cd "$inpath"
 * Comment:
 
 		capture gen ilo_FLWK = c41_flwk 
-		capture gen ilo_FLWK = c31_flwrk  	
+		capture gen ilo_FLWK = c31_flwrk 
+		capture gen ilo_FLWK = c32_flwrk
+		capture gen ilo_FLWK = cc41_flwrk
 		
 	gen ilo_cat_une=.
 		replace ilo_cat_une=1 if ilo_FLWK==1
@@ -929,7 +1003,9 @@ cd "$inpath"
 			* before that national classification used --> find mapping
 		
 		capture gen ilo_POCC = c40_pocc 
-		capture gen ilo_POCC = c45_pocc  	
+		capture gen ilo_POCC = c45_pocc 
+		capture gen ilo_POCC = cc45_pocc
+		capture gen ilo_POCC = c41f2_pocc
 		
 	
 		gen prevocu_cod=int(ilo_POCC/10) if ilo_lfs==2
@@ -1013,7 +1089,10 @@ cd "$inpath"
 * Comment: 
 
 		capture gen ilo_WYNOT = c42_wynt 
-		capture gen ilo_WYNOT = c34_wynot  	
+		capture gen ilo_WYNOT = c34_wynot 
+		capture gen ilo_WYNOT = cc42_wynot
+		capture gen ilo_WYNOT = c35_wynot
+		
 		
 	
 	gen ilo_olf_reason=.

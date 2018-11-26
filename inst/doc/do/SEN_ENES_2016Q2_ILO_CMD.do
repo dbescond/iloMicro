@@ -3,8 +3,8 @@
 * NOTES: 
 * Files created: Standard variables SEN_ENES_2016Q2_FULL.dta and SEN_ENES_2016Q2_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
-* Starting Date: 10 May 2018
-* Last updated: 10 May 2018
+* Starting Date: 28 May 2018
+* Last updated: 28 May 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -67,10 +67,23 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 
+	gen to_drop="$time"
+
 	gen ilo_wgt=.
-	    replace ilo_wgt=poids_corr
-		lab var ilo_wgt "Sample weight"
-	
+
+ if to_drop=="2016Q2"{
+    replace ilo_wgt=poids_corr
+  } 
+  else{
+    if to_drop=="2016Q3"{
+		replace ilo_wgt=poids_3011
+    }
+	else{
+		replace ilo_wgt=poids_trim4
+	}    
+}
+	lab var ilo_wgt "Sample weight"
+
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			                Time period ('ilo_time')		                   *
@@ -123,21 +136,44 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 	
     * Age groups
+	
+	 if to_drop=="2016Q4"{
+	gen b4_age=.
+		replace b4_age=1 if b4_classe==4
+		replace b4_age=2 if b4_classe==9
+		replace b4_age=3 if b4_classe==14
+		replace b4_age=4 if b4_classe==19
+		replace b4_age=5 if b4_classe==24
+		replace b4_age=6 if b4_classe==29
+		replace b4_age=7 if b4_classe==34
+		replace b4_age=8 if b4_classe==39
+		replace b4_age=9 if b4_classe==44
+		replace b4_age=10 if b4_classe==49
+		replace b4_age=11 if b4_classe==54
+		replace b4_age=12 if b4_classe==59
+		replace b4_age=13 if b4_classe==64
+		replace b4_age=14 if inlist(b4_classe,69,74,79,84,89,94,120) & b4_classe!=.
+  } 
+  else{
+	  gen b4_age=b4_r
+	}
+	
 	gen ilo_age_5yrbands=.
-		replace ilo_age_5yrbands=1 if b4_r==1
-		replace ilo_age_5yrbands=2 if b4_r==2
-		replace ilo_age_5yrbands=3 if b4_r==3
-		replace ilo_age_5yrbands=4 if b4_r==4
-		replace ilo_age_5yrbands=5 if b4_r==5
-		replace ilo_age_5yrbands=6 if b4_r==6
-		replace ilo_age_5yrbands=7 if b4_r==7
-		replace ilo_age_5yrbands=8 if b4_r==8
-		replace ilo_age_5yrbands=9 if b4_r==9
-		replace ilo_age_5yrbands=10 if b4_r==10
-		replace ilo_age_5yrbands=11 if b4_r==11
-		replace ilo_age_5yrbands=12 if b4_r==12
-		replace ilo_age_5yrbands=13 if b4_r==13
-		replace ilo_age_5yrbands=14 if inlist(b4_r,14,15,16) & b4_r!=.
+		replace ilo_age_5yrbands=1 if b4_age==1
+		replace ilo_age_5yrbands=2 if b4_age==2 
+		replace ilo_age_5yrbands=3 if b4_age==3 
+		replace ilo_age_5yrbands=4 if b4_age==4 
+		replace ilo_age_5yrbands=5 if b4_age==5 
+		replace ilo_age_5yrbands=6 if b4_age==6
+		replace ilo_age_5yrbands=7 if b4_age==7
+		replace ilo_age_5yrbands=8 if b4_age==8 
+		replace ilo_age_5yrbands=9 if b4_age==9 
+		replace ilo_age_5yrbands=10 if b4_age==10 
+		replace ilo_age_5yrbands=11 if b4_age==11 
+		replace ilo_age_5yrbands=12 if b4_age==12
+		replace ilo_age_5yrbands=13 if b4_age==13
+		replace ilo_age_5yrbands=14 if inlist(b4_age,14,15,16) & b4_age!=.
+		
 			lab def age_by5_lab 1 "0-4" 2 "5-9" 3 "10-14" 4 "15-19" 5 "20-24" 6 "25-29" 7 "30-34" 8 "35-39" 9 "40-44" 10 "45-49" 11 "50-54" 12 "55-59" 13 "60-64" 14 "65+"
 			lab val ilo_age_5yrbands age_by5_lab
 			lab var ilo_age_5yrbands "Age (5-year age bands)"
@@ -163,7 +199,7 @@ cd "$inpath"
 			lab def age_aggr_lab 1 "<15" 2 "15-24" 3 "25-54" 4 "55-64" 5 "65+"
 			lab val ilo_age_aggregate age_aggr_lab
 			lab var ilo_age_aggregate "Age (Aggregate)"
-			
+
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			           Level of education ('ilo_edu') 		                   *
@@ -789,7 +825,8 @@ cd "$inpath"
 cd "$outpath"
 	
 	compress
-		
+	drop to_drop
+	
 	/* Save dataset including original and ilo variables*/
 	save ${country}_${source}_${time}_FULL,  replace		
 	

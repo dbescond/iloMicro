@@ -127,7 +127,7 @@ cd "$inpath"
 *			                    Age ('ilo_age') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
+* Comment: - Since the SWTS covers 15-29 years old, the upper bound is ..... [T3:2481] 
 	
 	gen ilo_age=.
 	    replace ilo_age= age
@@ -180,7 +180,7 @@ cd "$inpath"
 *			           Level of education ('ilo_edu') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: variable highestlevel_comp different as the one mentionned in C12 of the questionaire
+* Comment: 
 
     *---------------------------------------------------------------------------
 	* ISCED 97
@@ -188,7 +188,7 @@ cd "$inpath"
 	
 	* Detailed
 	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if highestlevel_comp ==1      // No schooling
+		replace ilo_edu_isced97=1 if highestlevel_comp ==1  | ever_attend==2    // No schooling
 		replace ilo_edu_isced97=2 if  highestlevel_comp ==2      // Pre-primary education
 		replace ilo_edu_isced97=3 if highestlevel_comp ==3      // Primary education or first stage of basic education
 		replace ilo_edu_isced97=4 if   highestlevel_comp ==4     // Lower secondary education or second stage of basic education
@@ -259,7 +259,31 @@ cd "$inpath"
 		        label values ilo_mrts_aggregate label_mrts_aggregate
 		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
 				
-//				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			Disability status ('ilo_dsb_details')                              *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+
+    * Detailed
+       gen ilo_dsb_details=.
+             replace ilo_dsb_details=1 if (diff_see==1 & diff_hear==1 & diff_walk==1 & diff_rem==1 )                            
+             replace ilo_dsb_details=2 if (diff_see==2 | diff_hear==2 | diff_walk==2 | diff_rem==2 )                                                 
+             replace ilo_dsb_details=3 if (diff_see==3 | diff_hear==3 | diff_walk==3 | diff_rem==3 )                                                 
+             replace ilo_dsb_details=4 if (diff_see==4 | diff_hear==4 | diff_walk==4 | diff_rem==4 )
+
+				label def dsb_det_lab 1 "1 - No, no difficulty" 2 "2 - Yes, some difficulty" 3 "3 - Yes, a lot of difficulty" 4 "4 - Cannot do it at all"
+				label val ilo_dsb_details dsb_det_lab
+				label var ilo_dsb_details "Disability status (Details)"
+
+    * Aggregate  	
+	gen ilo_dsb_aggregate=.
+	    replace ilo_dsb_aggregate=1 if (ilo_dsb_details==1 | ilo_dsb_details==2)   // Persons without disability
+		replace ilo_dsb_aggregate=2 if (ilo_dsb_details==3 | ilo_dsb_details==4)  // Persons with disability
+				label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
+				label val ilo_dsb_aggregate dsb_lab
+				label var ilo_dsb_aggregate "Disability status (Aggregate)"
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *
@@ -284,15 +308,14 @@ cd "$inpath"
 *			       Labour Force Status ('ilo_lfs')                             *       
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: two variables for labour force: "labourforce" & "labourforce_r".
-*          Unemployed: available future starters not complete enough? Starting new job variable?
+* Comment: 
 	
 	gen ilo_lfs=.
         replace ilo_lfs=1 if (emp_lastw1==1 | emp_lastw2==1 | emp_lastw3==1 | emp_lastw4==1 | ///
 		emp_lastw5==1 | emp_lastw6==1 |emp_lastw7==1 ) & ilo_wap==1				   // Employed: ILO definition
 		replace ilo_lfs=1 if emp_temp_absent==1 & ilo_wap==1										// Employed: temporary absent
 		replace ilo_lfs=2 if inlist(seekingjob,1,2) & availability==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: three criteria
-		replace ilo_lfs=2 if foundjob==1 & startbusiness==1 & availability==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
+		replace ilo_lfs=2 if (foundjob==1 | startbusiness==1) & availability==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
 	    replace ilo_lfs=3 if !inlist(ilo_lfs,1,2) & ilo_wap==1							// Outside the labour force
 				label define label_ilo_lfs 1 "1 - Employed" 2 "2 - Unemployed" 3 "3 - Outside Labour Force"
 				label value ilo_lfs label_ilo_lfs
@@ -437,10 +460,7 @@ cd "$inpath"
 			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
 
-    *************
-    * SECOND JOB:
-    *************
-	
+
  
 			   
 * ------------------------------------------------------------------------------
@@ -519,7 +539,7 @@ cd "$inpath"
 *	Institutional sector of economic activities ('ilo_ins_sector')		       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: publicadmin variable: =1 ->public =0->private, (not in the questionaire)
+* Comment: 
 		
 	gen ilo_job1_ins_sector=.
 		replace ilo_job1_ins_sector=1 if publicadmin==1      & ilo_lfs==1    // Public
@@ -539,7 +559,6 @@ cd "$inpath"
     * MAIN JOB:
     ***********
 	
-	*Hours USUALLY worked
 
 
 
@@ -569,7 +588,7 @@ cd "$inpath"
 *			Working time arrangement ('ilo_job_time')		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: Threshold or median? Found that the normal working week is 40 hours
+* Comment: normal working week is 40 hours
 			
 	gen ilo_job1_job_time=.
 		replace ilo_job1_job_time=2 if ilo_job1_how_actual>=40  & ilo_lfs==1                             // Full-time
@@ -661,8 +680,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 * Comment: 
-*Questionaire D14, total_amount_wage and cash_amount are reversed. Total_amount_wage cannot be used for estimation of wage
-*amount_profit_selfemp -> profit firm or person?
+*
     ***********
     * MAIN JOB:
     ***********
@@ -676,13 +694,14 @@ cd "$inpath"
 	    replace ilo_job1_lri_ees = .     if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
 
-				/*
+				
 	* Self-employed
 	gen ilo_job1_lri_slf = .
 	    replace ilo_job1_lri_slf = amount_profit_selfemp if ilo_job1_ste_aggregate==2
 	    replace ilo_job1_lri_slf = .     if ilo_lfs!=1
+		replace ilo_job1_lri_slf = amount_profit_selfemp + amount_prodhh_selfemp if ilo_job1_ste_aggregate==2 &amount_prodhh_selfemp>0
 		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"
-			*/
+			
 
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -697,14 +716,13 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_tru') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: Not feasible - Criterion of availability not available
-/*
+* Comment: 
+
 	gen ilo_joball_tru = .
-	    replace ilo_joball_tru = 1 if ilo_joball_how_usual<=35 & likeworkmore==1 & ilo_lfs==1
+	    replace ilo_joball_tru = 1 if ilo_job1_how_actual<=35 & likeworkmore==1 & hours_likemore>0 & ilo_lfs==1
 			    lab def tru_lab 1 "Time-related underemployed"
 			    lab val ilo_joball_tru tru_lab
 			    lab var ilo_joball_tru "Time-related underemployed"
-	*/		
 	
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -715,20 +733,11 @@ cd "$inpath"
 * ------------------------------------------------------------------------------				
 
 * ------------------------------------------------------------------------------
+* -----------------------------------------------------------------------------
+*				                       * 
 * ------------------------------------------------------------------------------
-*			Category of unemployment ('ilo_cat_une') 	                       * 
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: Did not find variable on questionaire
-	/*
-	gen ilo_cat_une=.
-		replace ilo_cat_une=1 if      & ilo_lfs==2                     // Previously employed       
-		replace ilo_cat_une=2 if      & ilo_lfs==2                     // Seeking for the first time
-		replace ilo_cat_une=3 if ilo_cat_une==. & ilo_lfs==2           // Unknown
-			    lab def cat_une_lab 1 "1 - Unemployed previously employed" 2 "2 - Unemployed seeking their first job" 3 "3 - Unknown"
-			    lab val ilo_cat_une cat_une_lab
-			    lab var ilo_cat_une "Category of unemployment"
-				*/
+
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			   Duration of unemployment ('ilo_dur')  	                       * 
@@ -739,7 +748,7 @@ cd "$inpath"
 	* Detailed categories		
     gen ilo_dur_details=.
 	    replace ilo_dur_details=1 if inlist(length_search_job,1,2) & ilo_lfs==2                 // Less than 1 month
-		replace ilo_dur_details=2 if length_search_job==3      & ilo_lfs==2                 // 1 to 3 months
+		replace ilo_dur_details=2 if length_search_job==3      & ilo_lfs==2                 // 1 to 3 months ********[C7:3905]
 		replace ilo_dur_details=3 if length_search_job==4      & ilo_lfs==2                 // 3 to 6 months
 		replace ilo_dur_details=4 if length_search_job==5      & ilo_lfs==2                 // 6 to 12 months
 		replace ilo_dur_details=5 if length_search_job==6      & ilo_lfs==2                 // 12 to 24 months
@@ -843,7 +852,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 
 cd "$outpath"
-	drop ilo_age
+	
 	
 	compress
 		

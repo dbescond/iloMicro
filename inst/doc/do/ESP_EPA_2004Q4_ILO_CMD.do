@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Spain EPA
 * DATASET USED: Spain LFS 2004Q4
 * NOTES:
-* Authors: Estefania Alaminos
-* Who last updated the file: Estefania Alaminos 
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 03/10/2017
-* Last updated: 18/10/2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "ESP"
 global source "EPA"
 global time "2004Q4"
@@ -221,7 +221,7 @@ destring EDAD5, replace
 * -------------------------------------------------------------------------------------------
 
 * Comments: --  
-*** Until 2004 the classification followed is  CNED-2000 ("Clasificación Nacional de la Educación")
+*** Until 2004 the classification followed is  CNED-2000 ("ClasificaciÃƒ³n Nacional de la EducaciÃƒ³n")
 
 *** Only the aggregate variable is done here due to the way of presenting the information that EPA gives in this case. 
 
@@ -278,7 +278,39 @@ gen ilo_edu_aggregate = .
 	
 		
 	 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: marital status is only asked to the population aged 16 and above. 
+
+destring ECIV1, replace
 	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if ECIV1==1                                  // Single
+		replace ilo_mrts_details=2 if ECIV1==2                                  // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if ECIV1==3                                  // Widowed
+		replace ilo_mrts_details=5 if ECIV1==4                                  // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+						
+		
+		
 	
 	
 	 
@@ -479,7 +511,7 @@ destring SITPLU, replace
 			
 			replace ilo_job2_ste_icse93 = 3 if inlist(SITPLU,3,4) & ilo_mjh == 2       		// Own-account workers
 			
-			replace ilo_job2_ste_icse93 = 4 if SITPLU == 5 & ilo_mjh == 2       		// Members of producers’ cooperatives
+			replace ilo_job2_ste_icse93 = 4 if SITPLU == 5 & ilo_mjh == 2       		// Members of producersÃ¢â‚¬â„¢ cooperatives
 
 			replace ilo_job2_ste_icse93 = 5 if SITPLU == 6 & ilo_mjh == 2             // Contributing family workers
 			

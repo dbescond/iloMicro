@@ -4,7 +4,7 @@
 * Files created: Standard variables MUS_CMPHS_2013_FULL.dta and MUS_CMPHS_2013_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 27 April 2018
-* Last updated: 27 April 2018
+* Last updated: 28 May 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -245,12 +245,42 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 			
     gen ilo_edu_attendance=.
-		replace ilo_edu_attendance=1 if schatt==1 | inlist(whenstudied,1,2,3)                  // Attending
-		replace ilo_edu_attendance=2 if inlist(schatt,2,3,4,5,6) | inlist(whenstudied,4,5)     // Not attending
-		replace ilo_edu_attendance=3 if ilo_edu_attendance==.                                  // Not elsewhere classified
+		replace ilo_edu_attendance=1 if schatt==1 | inlist(whenstudied,1,2,3)                                            // Attending
+		replace ilo_edu_attendance=2 if ilo_edu_attendance!=1 & (inlist(schatt,2,3,4,5,6) | inlist(whenstudied,4,5))     // Not attending
+		replace ilo_edu_attendance=3 if ilo_edu_attendance==.                                                            // Not elsewhere classified
 			    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
+				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: - For the detailed version: married already includes union.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if maritalstat==5                            // Single
+		replace ilo_mrts_details=2 if maritalstat==1                            // Married
+		* replace ilo_mrts_details=3 if                                         // Union / cohabiting
+		replace ilo_mrts_details=4 if maritalstat==2                            // Widowed
+		replace ilo_mrts_details=5 if inlist(maritalstat,3,4)                   // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+				
 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -561,9 +591,9 @@ cd "$inpath"
 				
 	* 1-digit level 				
 	gen ilo_job1_ocu_isco08=.
-	    replace ilo_job1_ocu_isco08=11 if inlist(ilo_job1_ocu_isco08_2digits,45,47,49,55,59,84,85,97,99) & ilo_lfs==1        // Not elsewhere classified
-		replace ilo_job1_ocu_isco08=int(ilo_job1_ocu_isco08_2digits/10) if (ilo_job1_ocu_isco08==. & ilo_lfs==1)             // The rest of the occupations
-		replace ilo_job1_ocu_isco08=10 if (ilo_job1_ocu_isco08==0 & ilo_lfs==1)                                              // Armed forces
+	    replace ilo_job1_ocu_isco08=11 if inlist(ilo_job1_ocu_isco08_2digits,45,47,49,55,59,84,85,97,99,.) & ilo_lfs==1        // Not elsewhere classified
+		replace ilo_job1_ocu_isco08=int(ilo_job1_ocu_isco08_2digits/10) if (ilo_job1_ocu_isco08==. & ilo_lfs==1)               // The rest of the occupations
+		replace ilo_job1_ocu_isco08=10 if (ilo_job1_ocu_isco08==0 & ilo_lfs==1)                                                // Armed forces
 		        lab def ocu_isco08_1digit 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
                                           5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
                                           9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
@@ -682,7 +712,7 @@ cd "$inpath"
 				lab var ilo_joball_how_usual_bands "Weekly hours usually worked bands - all jobs"
 				
 	* Hours ACTUALLY worked
-	egen ilo_joball_how_actual = rowtotal(hrsmainjob hrsotherjob), m
+	egen ilo_joball_how_actual = rowtotal(hrsmainjob hrsother), m
 	    replace ilo_joball_how_actual = . if ilo_lfs!=1
 		        lab var ilo_joball_how_actual "Weekly hours actually worked - all jobs"
 		 
@@ -743,10 +773,10 @@ cd "$inpath"
 		  - Private household identification: estname (option 7, only asked to employees) / owntype (option 2, only asked to self-employed)
 		  -                                   ilo_job1_eco_isic4_2digits==97/ilo_job1_ocu_isco08_2digits==63.
 		  - Destination of production: not asked.
-		  - Bookkeeping: typeacc (options 3 & 4) (only asked to self-employed)
+		  - Bookkeeping: formacc (option 1) (only asked to self-employed)
 		  - Registration: not asked.
 		  - Status in employment: ilo_job1_ste_icse93==1
-		  - Social security contribution (Proxy: pension funds): National pension scheme paid by the employer -> contrnps (only for employees)
+		  - Social security contribution: National pension scheme paid by the employer -> empnps (only for employees)
 		  - Place of work: not asked.
 		  - Size: size (only asked to employees) / a set of question for self-employed; not used due to the lack of information on the place of work.
 		  - Paid annual leave: not asked.
@@ -754,19 +784,19 @@ cd "$inpath"
 */
     * Social Security:
 	gen social_security=.
-	    replace social_security=1 if contrnps==1 & ilo_lfs==1          // social security (proxy)
-		replace social_security=2 if contrnps==2 & ilo_lfs==1          // no social security (proxy)
+	    replace social_security=1 if empnps==1 & ilo_lfs==1          // social security (proxy)
+		replace social_security=2 if empnps==2 & ilo_lfs==1          // no social security (proxy)
 	
     * 1) UNIT OF PRODUCTION: FORMAL/INFORMAL SECTOR
 	gen ilo_job1_ife_prod=.
 	    replace ilo_job1_ife_prod=3 if ilo_lfs==1 & ///
 		                               ((estname==7) | ///
 									   (owntype==2) | ///
-									   ( ilo_job1_eco_isic4_2digits==97 | ilo_job1_ocu_isco08_2digits==63))
+									   (ilo_job1_eco_isic4_2digits==97 | ilo_job1_ocu_isco08_2digits==63))
 		replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & ///
 		                               ((inlist(estname,1,2,3,4)) | ///
-									   (inlist(estname,0,5,6,7,8,.) & inlist(typeacc,3,4)) | ///
-									   (inlist(estname,0,5,6,7,8,.) & inlist(typeacc,1,2,.) & ilo_job1_ste_icse93==1 & social_security==1))
+									   (inlist(estname,0,5,6,7,8,.) & formacc==1) | ///
+									   (inlist(estname,0,5,6,7,8,.) & inlist(formacc,2,.) & ilo_job1_ste_icse93==1 & social_security==1))
 		replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,2,3)
 				lab def ilo_ife_prod_lab 1 "1 - Informal" 2 "2 - Formal" 3 "3 - Household" 
 				lab val ilo_job1_ife_prod ilo_ife_prod_lab
@@ -789,7 +819,7 @@ cd "$inpath"
 *	    Monthly related income ('ilo_lri_ees' and 'ilo_lri_slf')  		       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - It includes overtime pay. Rupees.
+* Comment: - It includes overtime pay. Currency: rupees.
 *          - No information for the second job.
 
     ***********
@@ -799,8 +829,14 @@ cd "$inpath"
 	* Employees
 	gen ilo_job1_lri_ees = .
 	    replace ilo_job1_lri_ees = income if ilo_job1_ste_aggregate==1
-	    replace ilo_job1_lri_ees = .  if ilo_lfs!=1
+	    replace ilo_job1_lri_ees = . if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
+				
+	* Self-employed
+	gen ilo_job1_lri_slf = .
+	    replace ilo_job1_lri_slf = income if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf = . if ilo_job1_lri_slf==99999 | ilo_lfs!=1
+		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"						
 			
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -815,12 +851,13 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_tru') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Two criteria (worked less than a threshold and available to work more 
-*            hours) (T35:4143)
+* Comment: - Three criteria: want to work more hours (looking for additional or 
+*            alternative wor (with more hours), available and worked less than a 
+*            threshold.
 *          - Threshold is set at 35 hours per week.
 
 	gen ilo_joball_tru = .
-	    replace ilo_joball_tru = 1 if ilo_joball_how_usual<=35  & addwork==1 & extrahrs>0 & ilo_lfs==1
+	    replace ilo_joball_tru = 1 if ilo_joball_how_usual<=35  & addwork==1 & extrahrs>0 & lookadd==1 & ilo_lfs==1
 			    lab def tru_lab 1 "Time-related underemployed"
 			    lab val ilo_joball_tru tru_lab
 			    lab var ilo_joball_tru "Time-related underemployed"

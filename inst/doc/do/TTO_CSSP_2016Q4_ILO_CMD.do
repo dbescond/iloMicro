@@ -1,7 +1,7 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Palestine
-* DATASET USED: Trinidad & Tobago LFS
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Trinidad & Tobago  
+* DATASET USED: Trinidad & Tobago CSSP
 * NOTES: 
-* Files created: Standard variables on LFS Palestine
+* Files created: Standard variables on Trinidad & Tobago
 * Authors: DPAU 
 * Starting Date: 08 February 2018
 * Last updated:  13 February 2018
@@ -21,7 +21,7 @@ global path "J:\DPAU\MICRO"
 global country "TTO"
 global source "CSSP"
 global time "2016Q4"
-global input_file "Private Persons Data (16)SRequest.dta"
+global inputFile "Private Persons Data (16)SRequest.dta"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
@@ -51,7 +51,7 @@ cd "$temppath"
 
 cd "$inpath"
 
-	use "${input_file}", clear	
+	use "${inputFile}", clear	
 	
 	rename *, lower
 		
@@ -109,10 +109,24 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 	
-	gen ilo_wgt = raisefac/100
+	
+* Comment: weights are different depending on whether we take quarterly or annual data
 
-        lab var ilo_wgt "Sample weight"	
+	
+if substr(todrop,5,1)=="Q" {
+	
+	gen ilo_wgt=raisefac/100
+		
+		}
+		
+	else {	
 
+	gen ilo_wgt=raisefac/400
+		
+			}
+	
+		
+		lab var ilo_wgt "Sample weight"	
  
  
  * ---------------------------------------------------------------------------------------------
@@ -224,6 +238,40 @@ cd "$inpath"
  
  ** No information
 
+ 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: variable p12
+*          there is not enough information to make a distintion between widowed and divorced, since the only information
+*          related to this is in the category  "Had a partner but now living alone", without more information on the dissolution.
+*          "Married but living alone" has been considered as separated.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p12==1                                          // Single
+		replace ilo_mrts_details=2 if p12==4                                          // Married
+		replace ilo_mrts_details=3 if p12==5                                          // Union / cohabiting
+		*replace ilo_mrts_details=4 if                                                // Widowed
+		replace ilo_mrts_details=5 if inlist(p12,2,3)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                 // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+
+ 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') [no info]
@@ -264,7 +312,7 @@ cd "$inpath"
 
 	gen ilo_lfs=.
 		replace ilo_lfs=1 if p18==1 & ilo_wap==1 // employed
-		replace ilo_lfs=2 if ilo_lfs!=1 & (p18==2 & p23==1) // unemployed (those who looked for job last week)		
+		replace ilo_lfs=2 if ilo_lfs!=1 & (p18==2 & p23==1) // unemployed (those who looked for job last week)	[(two criteria) (T5:1429)]	
 		replace ilo_lfs=3 if !inlist(ilo_lfs,1,2)
 		replace ilo_lfs=. if ilo_wap!=1	
 				label define label_ilo_lfs 1 "Employed" 2 "Unemployed" 3 "Outside Labour Force"

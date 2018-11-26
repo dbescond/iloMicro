@@ -67,9 +67,9 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 
 	gen ilo_wgt=.
-	    replace ilo_wgt=m_7 
+	    replace ilo_wgt=edm7 
 		lab var ilo_wgt "Sample weight"
-	
+
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			                Time period ('ilo_time')		                   *
@@ -223,6 +223,37 @@ cd "$inpath"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: - Marital status (b9) question is made to people aged 14 years and above. 
+*          - There is no info on union/cohabiting.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if b9==1                                     // Single
+		replace ilo_mrts_details=2 if b9==2                                     // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if b9==5                                     // Widowed
+		replace ilo_mrts_details=5 if inlist(b9,3,4)                            // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+								
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')                              *

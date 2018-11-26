@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - United Kingdom LFS
 * DATASET USED: Great Britain LFS 2017Q2
 * NOTES:
-* Authors: Estefania Alaminos
-* Who last updated the file: Estefania Alaminos 
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 08/11/2017
-* Last updated: 04/12/2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,7 +20,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "GBR"
 global source "LFS"
 global time "2017Q2"
@@ -30,43 +30,14 @@ global outpath "${path}\\${country}\\${source}\\${time}"
 
 
 
-***********************************
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-	use "$inputFile", clear
- rename *, lower 
-
-***********************************
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
-
-cd "$inpath"
-	use "$inputFile", clear
- rename *, lower 
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
+	
 
 
 ***********************************************************************************************
@@ -410,6 +381,47 @@ gen ilo_edu_attendance = .
 			lab val ilo_edu_attendance edu_attendance_lab
 			lab var ilo_edu_attendance "Education (Attendance)"
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+
+if `Y' > 2005 {
+ gen mrt = marsta
+
+}	
+
+if `Y' < 2006 {
+* Comment: before 2006, there are no information on civil union in the marital status variable
+ gen mrt = marstt 	
+
+} 
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if mrt==1                                 // Single
+		replace ilo_mrts_details=2 if mrt==2                                 // Married
+		replace ilo_mrts_details=3 if mrt==6                                 // Union / cohabiting
+		replace ilo_mrts_details=4 if mrt==5                                 // Widowed
+		replace ilo_mrts_details=5 if inlist(mrt,3,4)                        // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+
+			
+						
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------

@@ -228,7 +228,7 @@ test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>%
 tocheck <- NULL				
 	for (i in 1:nrow(test)){
 		test_dta <- NULL
-		try(test_dta <- haven::read_dta(test$file[i]) %>% select(-contains('ilo_key'), -contains('ilo_time'), -contains('job2_')) )
+		try(test_dta <- haven::read_dta(test$file[i]) %>% select(-contains('ilo_key'), -contains('ilo_time')) )
 		if(!is.null(test_dta)){
 			test$var_available[i] <- paste0(colnames(test_dta), collapse = '/') 
 			test$n_records[i] <-  nrow(test_dta)

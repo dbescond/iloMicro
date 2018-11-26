@@ -2,10 +2,10 @@
 * DATASET USED: Philippines LFS 
 * NOTES: 
 * Files created: Standard variables on LFS Philippines
-* Authors: Podjanin
-* Who last updated the file: Podjanin, A.
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 30 March 2017
-* Last updated: 10 July 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -18,7 +18,7 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "PHL"
 global source "LFS"
 global time "2004Q3"
@@ -290,6 +290,48 @@ cd "$inpath"
 				lab var ilo_edu_attendance "Education (Attendance)" 
 		drop ilo_SCHOOL_STATUS
 	*/	
+	
+	
+	
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+if time <= "2003Q2"{
+	gen marital = c06_mstat 
+}	
+
+if time >= "2003Q3"{
+	gen marital = cc08_mstat
+}	
+
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if marital==1                                // Single
+		replace ilo_mrts_details=2 if marital==2                                // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if marital==3                                // Widowed
+		replace ilo_mrts_details=5 if marital==4                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+						
+			
+	drop marital		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') [no info available]
@@ -319,7 +361,6 @@ cd "$inpath"
 
 	gen ilo_wap=.
 		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
-		replace ilo_wap=0 if ilo_age<15
 			label def ilo_wap_lab 1 "Working age population"
 			label val ilo_wap ilo_wap_lab
 			label var ilo_wap "Working age population" //15+ population

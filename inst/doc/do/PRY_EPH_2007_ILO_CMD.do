@@ -30,63 +30,13 @@ global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-* note to work it requires to run (on a one time basis):
-
-/*
-set httpproxyhost proxy.ilo.org
-set httpproxyport 3128
-set httpproxy on
-
-ssc install labutil
-	*/
-cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				
-				drop code_label* code_level
-			
-			save "`labels'"
-
-
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
-* 			Load original dataset
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use ${inputFile}, clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
 		
 * to ensure that no observations are added
 gen original=1
@@ -166,7 +116,7 @@ rename a14rec aux_preveco
 	replace aux_usual=. if aux_usual==0
 	replace aux_hours_job2=. if aux_hours_job2==0
 	replace aux_hours_rest=.  if aux_hours_rest==0
-	replace aux_edu_code_de=aux_edu_code_de+200 if aux_edu_code_de>1600&aux_edu_code_de<8888
+	replace aux_attendance = aux_attendance + 8
 
 }
 
@@ -177,7 +127,7 @@ rename area aux_geo
 rename p06 aux_sex
 rename p02 aux_age
 rename ed54 aux_edu_code_de
-rename ed06 aux_phd
+
 rename ed08 aux_attendance
 rename a02 aux_emp_anywork
 rename a04 aux_emp_timework
@@ -226,17 +176,20 @@ gen aux_registration=.
 	replace aux_usual=. if aux_usual==0
 	replace aux_hours_job2=. if aux_hours_job2==0
 	replace aux_hours_rest=.  if aux_hours_rest==0
-	replace aux_edu_code_de=aux_edu_code_de+200 if aux_edu_code_de>1600&aux_edu_code_de<8888
-
+	replace aux_edu_code_de=aux_edu_code_de+500 if inrange(aux_edu_code_de,1101,1406)
+		replace aux_edu_code_de=aux_edu_code_de+100 if inrange(aux_edu_code_de,801,1004)
+	gen aux_phd=6+ed06
+	replace aux_attendance = aux_attendance +10
+	replace aux_ste = aux_ste - 2 if aux_ste>2
 }
 
-if ${time} <=2005  {
+if ${time} ==2005  {
 rename fex aux_weight
 rename area aux_geo
 rename p06 aux_sex
 rename p02 aux_age
 rename ed54 aux_edu_code_de
-rename ed06 aux_phd
+
 rename ed08 aux_attendance
 rename a02 aux_emp_anywork
 rename a04 aux_emp_timework
@@ -279,7 +232,235 @@ gen aux_registration=.
 	replace aux_usual=. if aux_usual==0
 	replace aux_hours_job2=. if aux_hours_job2==0
 	replace aux_hours_rest=.  if aux_hours_rest==0
-	replace aux_edu_code_de=aux_edu_code_de+200 if aux_edu_code_de>1600&aux_edu_code_de<8888
+
+	replace aux_edu_code_de=aux_edu_code_de+500 if inrange(aux_edu_code_de,1101,1406)
+		replace aux_edu_code_de=aux_edu_code_de+100 if inrange(aux_edu_code_de,801,1004)
+gen aux_phd=.
+	replace aux_attendance = aux_attendance +10
+	replace aux_ste = aux_ste - 2 if aux_ste>2
+
+}
+
+
+if ${time} ==2004  {
+rename fex aux_weight
+rename area aux_geo
+rename p06 aux_sex
+rename p02 aux_age
+rename ed43 aux_edu_code_de
+
+rename ed07 aux_attendance
+rename a02 aux_emp_anywork
+rename a04 aux_emp_timework
+rename a03 aux_emp_togoback
+rename a12 aux_une_available
+rename a13 aux_une_sought
+rename b22 aux_mjh
+rename b12 aux_ste
+rename b02rec aux_eco_j1
+rename c02rec aux_eco_j2
+rename b01rec aux_ocu_j1
+
+rename b10 aux_SS
+rename b03lu aux_hours_1
+rename b03ma aux_hours_2
+rename b03mi aux_hours_3
+rename b03ju aux_hours_4
+rename b03vi aux_hours_5
+rename b03sa aux_hours_6
+rename b03do aux_hours_7
+rename b06 aux_usual
+rename c03 aux_hours_job2
+rename c10 aux_hours_rest
+rename b13t aux_ee_inc
+rename e01aimde aux_se_inc
+
+rename a06 aux_cat_une
+rename a16m aux_une_dur_m
+rename a16a aux_une_dur_y
+rename a16s aux_une_dur_w
+rename a07rec aux_prevocu
+rename a08rec aux_preveco
+
+*Not Available Variables
+gen aux_corporate=.
+gen aux_registration=.
+
+
+	* Numerical adjustments
+	replace aux_usual=. if aux_usual==0
+	replace aux_hours_job2=. if aux_hours_job2==0
+	replace aux_hours_rest=.  if aux_hours_rest==0
+
+	replace aux_edu_code_de=aux_edu_code_de+500 if inrange(aux_edu_code_de,1101,1406)
+		replace aux_edu_code_de=aux_edu_code_de+100 if inrange(aux_edu_code_de,801,1004)
+gen aux_phd=.
+	replace aux_attendance = aux_attendance +10
+	replace aux_ste = aux_ste - 2 if aux_ste>2
+
+}
+
+if ${time} ==2003  {
+rename fex aux_weight
+rename area aux_geo
+rename p06 aux_sex
+rename p02 aux_age
+rename ed43 aux_edu_code_de
+
+rename ed11 aux_attendance
+rename a02 aux_emp_anywork
+rename a04 aux_emp_timework
+rename a03 aux_emp_togoback
+rename a12 aux_une_available
+rename a13 aux_une_sought
+rename b22 aux_mjh
+rename b12 aux_ste
+rename b02rec aux_eco_j1
+rename c02rec aux_eco_j2
+rename b01rec aux_ocu_j1
+
+rename b10 aux_SS
+rename b03lu aux_hours_1
+rename b03ma aux_hours_2
+rename b03mi aux_hours_3
+rename b03ju aux_hours_4
+rename b03vi aux_hours_5
+rename b03sa aux_hours_6
+rename b03do aux_hours_7
+rename b06 aux_usual
+rename c03 aux_hours_job2
+rename c10 aux_hours_rest
+rename b13t aux_ee_inc
+rename e01aimde aux_se_inc
+
+rename a06 aux_cat_une
+rename a16m aux_une_dur_m
+rename a16a aux_une_dur_y
+rename a16s aux_une_dur_w
+rename a07rec aux_prevocu
+rename a08rec aux_preveco
+
+*Not Available Variables
+gen aux_corporate=.
+gen aux_registration=.
+
+
+	* Numerical adjustments
+	replace aux_usual=. if aux_usual==0
+	replace aux_hours_job2=. if aux_hours_job2==0
+	replace aux_hours_rest=.  if aux_hours_rest==0
+
+	replace aux_edu_code_de=aux_edu_code_de+500 if inrange(aux_edu_code_de,1101,1406)
+		replace aux_edu_code_de=aux_edu_code_de+100 if inrange(aux_edu_code_de,801,1004)
+gen aux_phd=.
+	replace aux_attendance = aux_attendance + 10 - 2
+	replace aux_ste = aux_ste - 2 if aux_ste>2
+
+}
+
+
+if ${time} <=2002  {
+rename fex aux_weight
+rename area aux_geo
+rename p06 aux_sex
+rename p02 aux_age
+gen todrop_aux_edu= ed43
+gen aux_edu_code_de=.
+
+rename ed07 aux_attendance
+rename a02 aux_emp_anywork
+rename a04 aux_emp_timework
+rename a03 aux_emp_togoback
+rename a12 aux_une_available
+rename a13 aux_une_sought
+rename b22 aux_mjh
+rename b12 aux_ste
+rename b02rec aux_eco_j1
+rename c02rec aux_eco_j2
+rename b01rec aux_ocu_j1
+
+rename b10 aux_SS
+rename b03lu aux_hours_1
+rename b03ma aux_hours_2
+rename b03mi aux_hours_3
+rename b03ju aux_hours_4
+rename b03vi aux_hours_5
+rename b03sa aux_hours_6
+rename b03do aux_hours_7
+rename b06 aux_usual
+rename c03 aux_hours_job2
+rename c10 aux_hours_rest
+rename b13t aux_ee_inc
+rename e01aimde aux_se_inc
+
+rename a06 aux_cat_une
+rename a16m aux_une_dur_m
+rename a16a aux_une_dur_y
+rename a16s aux_une_dur_w
+rename a07rec aux_prevocu
+rename a08rec aux_preveco
+
+*Not Available Variables
+gen aux_corporate=.
+gen aux_registration=.
+gen aux_phd=.
+
+	* Numerical adjustments
+	replace aux_usual=. if aux_usual==0
+	replace aux_hours_job2=. if aux_hours_job2==0
+	replace aux_hours_rest=.  if aux_hours_rest==0
+
+	replace aux_attendance = . if aux_attendance==0
+	replace aux_attendance = aux_attendance + 10 + 2
+	
+	replace aux_ste = aux_ste - 2 if aux_ste>2
+	
+	
+	
+replace aux_edu =0 if todrop_aux_edu ==0
+replace aux_edu =101 if todrop_aux_edu ==88
+replace aux_edu =211 if todrop_aux_edu ==100
+replace aux_edu =301 if todrop_aux_edu ==201
+replace aux_edu =302 if todrop_aux_edu ==202
+replace aux_edu =303 if todrop_aux_edu ==203
+replace aux_edu =304 if todrop_aux_edu ==204
+replace aux_edu =305 if todrop_aux_edu ==205
+replace aux_edu =306 if todrop_aux_edu ==206
+replace aux_edu =407 if todrop_aux_edu ==207
+replace aux_edu =408 if todrop_aux_edu ==208
+replace aux_edu =409 if todrop_aux_edu ==209
+replace aux_edu =501 if todrop_aux_edu ==301
+replace aux_edu =502 if todrop_aux_edu ==302
+replace aux_edu =503 if todrop_aux_edu ==303
+replace aux_edu =704 if todrop_aux_edu ==404
+replace aux_edu =705 if todrop_aux_edu ==405
+replace aux_edu =706 if todrop_aux_edu ==406
+replace aux_edu =704 if todrop_aux_edu ==504
+replace aux_edu =705 if todrop_aux_edu ==505
+replace aux_edu =706 if todrop_aux_edu ==506
+replace aux_edu =901 if todrop_aux_edu ==604
+replace aux_edu =902 if todrop_aux_edu ==605
+replace aux_edu =903 if todrop_aux_edu ==606
+replace aux_edu =1001 if todrop_aux_edu ==1101
+replace aux_edu =1101 if todrop_aux_edu ==1001
+replace aux_edu =1102 if todrop_aux_edu ==1002
+replace aux_edu =1103 if todrop_aux_edu ==1003
+replace aux_edu =1701 if todrop_aux_edu ==701
+replace aux_edu =1702 if todrop_aux_edu ==702
+replace aux_edu =1703 if todrop_aux_edu ==703
+replace aux_edu =1704 if todrop_aux_edu ==704
+replace aux_edu =1801 if todrop_aux_edu ==801
+replace aux_edu =1802 if todrop_aux_edu ==802
+replace aux_edu =1803 if todrop_aux_edu ==803
+replace aux_edu =1804 if todrop_aux_edu ==804
+replace aux_edu =1901 if todrop_aux_edu ==901
+replace aux_edu =1902 if todrop_aux_edu ==902
+replace aux_edu =1903 if todrop_aux_edu ==903
+replace aux_edu =1904 if todrop_aux_edu ==904
+replace aux_edu =1905 if todrop_aux_edu ==905
+replace aux_edu =1906 if todrop_aux_edu ==906
+replace aux_edu =9999 if todrop_aux_edu ==9999
+drop todrop_aux_edu
 
 }
 
@@ -421,7 +602,7 @@ For doctorates it is explicitly used
 */
 
 ** ISCED97
-recode aux_edu_code_de (0=1) (101=2) (102=2) (103=2) (104=2) (105=2) (106=3) (107=3) (108=3) (109=3) (110=2) (111=2) (112=2) (210=2) (211=2) (212=2) (301=2) (302=2) (303=2) (304=2) (305=2) (306=3) (407=3) (408=3) (409=4) (501=3) (502=3) (503=4) (604=4) (605=4) (606=5) (607=5) (704=4) (705=4) (706=5) (803=5) (901=4) (902=4) (903=5) (1001=4) (1002=4) (1003=5) (1101=4) (1102=4) (1103 1104=5) (1201=2) (1202=2) (1203=3) (1204=3) (1301=4) (1302=4) (1303=5) (1304=5) (1401=2) (1402=2) (1403 1404=3) (1501=4) (1502=4) (1503=5) (1504=5) (1601=4) (1602=4) (1603=5) (1604=5) (1701=3) (1702=3) (1703=4) (1801=2) (1900=2) (2001=5) (2002=5) (2003=7) (2004=7) (2101=5) (2102=5) (2103=7) (2104=7) (2201=5) (2202=5) (2203=7) (2204=7) (2205=7) (2206=7) (2301=5) (2302=5) (2303=7) (2304=7) (2401=5) (2402=5) (2403=5) (2404=7) (2405=7) (2406=-1000) (8888=9) (9999 =9), gen(ilo_edu_isced97)
+recode aux_edu_code_de (0 = 1) (188=2) (101 = 2) (102 = 2) (103 = 2) (104 = 2) (105 = 2) (106 = 3) (210 = 2) (211/212 = 2) (301 = 2) (302 = 2) (303 = 2) (304 = 2) (305 = 2) (306 = 3) (407 = 3) (408 = 3) (409 = 4) (501 = 3) (502 = 3) (503 = 4) (604 = 4) (605 = 4) (606 = 5) (704 = 4) (705 = 4) (706 = 5) (901 = 4) (902 = 4) (903 = 5) (1001 = 4) (1002 = 4) (1003 = 5) (1101 = 2) (1102 = 2) (1103 = 3) (1104 = 3) (1201 = 4) (1202 = 4) (1203 = 5) (1301 = 4) (1302 = 4) (1303 = 5) (1400 = 2) (1500 = 2) (1601 = 5) (1602 = 5) (1603 = 7) (1701 = 5) (1702 = 5) (1703 = 7) (1704 = 7) (1801 = 5) (1802 = 5) (1803 = 7) (1804 = 7) (1901 = 5) (1902 = 5) (1903 = 5) (1904 = 7) (1905 = 7) (1906 =-1000) (9999 = 9) (801 = 4) (802 = 4), gen(ilo_edu_isced97)
 	replace ilo_edu_isced97=8 if ilo_edu_isced97==-1000&aux_phd==8
 	replace ilo_edu_isced97=7 if ilo_edu_isced97==-1000
 	replace ilo_edu_isced97=9 if ilo_edu_isced97==.
@@ -455,12 +636,42 @@ recode aux_edu_code_de (0=1) (101=2) (102=2) (103=2) (104=2) (105=2) (106=3) (10
 	gen ilo_edu_attendance=.
 		replace ilo_edu_attendance=1 if aux_attendance<20			// Attending
 		replace ilo_edu_attendance=2 if aux_attendance==20				// Not attending
-			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending"
+		replace ilo_edu_attendance=3 if ilo_edu_attendance==.
+			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Unkown"
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
 
 			
-
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p09==5                                    // Single
+		replace ilo_mrts_details=2 if p09==1                                    // Married
+		replace ilo_mrts_details=3 if p09==2                                    // Union / cohabiting
+		replace ilo_mrts_details=4 if p09==4                                    // Widowed
+		replace ilo_mrts_details=5 if inlist(p09,3,6)                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+	
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -584,11 +795,11 @@ count
 		replace ilo_job1_eco_aggregate=6 if inlist(aux_eco_j1,8)
 		replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_aggregate==.
 		replace ilo_job1_eco_aggregate=. if ilo_lfs!=1
-			lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-								5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-								6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			 lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
 			lab val ilo_job1_eco_aggregate eco_aggr_lab
-			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
 		
 		*****************************************************
@@ -606,8 +817,9 @@ count
 		replace ilo_job2_eco_aggregate=6 if inlist(aux_eco_j2,8)
 		replace ilo_job2_eco_aggregate=7 if ilo_job2_eco_aggregate==.
 		replace ilo_job2_eco_aggregate=. if (ilo_lfs!=1|ilo_mjh!=2)
-			lab val ilo_job2_eco_aggregate eco_aggr_lab
-			lab var ilo_job2_eco_aggregate "Economic activity (Aggregate)"
+               * labels already defined for main job
+	           lab val ilo_job2_eco_aggregate eco_aggr_lab
+			   lab var ilo_job2_eco_aggregate "Economic activity (Aggregate) - second job"			
 
 			
 				
@@ -630,11 +842,11 @@ count
 				replace ilo_job1_ocu_isco08=10 if ilo_job1_ocu_isco08==0
 				replace ilo_job1_ocu_isco08=11 if (ilo_job1_ocu_isco08==.|ilo_job1_ocu_isco08>10 & ilo_lfs==1)
 				replace ilo_job1_ocu_isco08=. if ilo_lfs!=1
-					lab def isco08_1dig_lab 1 "1 - Managers" 2 "2 - Professionals" 3 "Technicians and associate professionals" 4 "4 - Clerical support workers" 5 "5 - Service and sales workers" ///
-									6 "6 - Skilled agricultural, forestry and fishery workers" 7 "7 - Craft and related trades workers" 8 "8 - Plant and machine operators, and assemblers" ///
-									9 "9 - Elementary occupations" 10 "0 - Armed forces occupations" 11 "X - Not elsewhere classified"
-					lab val ilo_job1_ocu_isco08 isco08_1dig_lab
-					lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08)"		
+					lab def ocu_isco08_1digit 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
+                                          5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
+					lab val ilo_job1_ocu_isco08 ocu_isco08_1digit
+					lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08) - main job"	
 
 		* Aggregate:			
 			gen ilo_job1_ocu_aggregate=.
@@ -648,14 +860,15 @@ count
 					lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
 										4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
 					lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - Main job"	
+					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
 					
 					
 		* Skill level
 		recode ilo_job1_ocu_isco08 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_job1_ocu_skill)
-		lab def ilo_job1_ocu_skill 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
-		lab val ilo_job1_ocu_skill ilo_job1_ocu_skill
-		lab var ilo_job1_ocu_skill "Occupation (Skill level)"
+				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
+			    lab val ilo_job1_ocu_skill ocu_skill_lab
+			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
+				
 
 
 
@@ -696,7 +909,7 @@ count
 *			Formal / Informal Economy ('ilo_job1_ife_prod' 'ilo_job1_ife_nature') 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------			
-		
+if ${time} > 2007 {		
 	/* Useful questions:
 	
 		Missing:
@@ -829,7 +1042,7 @@ count
 	***********************************************************
 	*** End informality****************************************
 	***********************************************************
-	
+}	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Hours of work ('ilo_job1_how')
@@ -842,6 +1055,7 @@ foreach var of varlist aux_hours_1-aux_hours_7 {
 	replace MINUTES_`var'=0 if MINUTES_`var'>0.601
 	
 	replace HOURS_`var'=0 if HOURS_`var'==99
+	replace HOURS_`var'=0 if HOURS_`var'==99.99
 	replace MINUTES_`var'= MINUTES_`var'/0.60
 	
 	gen TIME_`var'= HOURS_`var' + MINUTES_`var'
@@ -1013,8 +1227,9 @@ if ${time} >= 2006 {
 		replace ilo_preveco_aggregate=6 if inlist( aux_preveco,8)
 		replace ilo_preveco_aggregate=7 if ilo_preveco_aggregate==.
 		replace ilo_preveco_aggregate=. if (ilo_lfs!=2|ilo_cat_une!=1)
-			lab val ilo_preveco_aggregate eco_aggr_lab
-			lab var ilo_preveco_aggregate "Economic activity (Aggregate)"
+                * labels already defined for main job
+		        lab val ilo_preveco_aggregate eco_aggr_lab
+			    lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
 	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -1027,8 +1242,10 @@ if ${time} >= 2006 {
 				replace ilo_prevocu_isco08=10 if ilo_prevocu_isco08==0
 				replace ilo_prevocu_isco08=11 if ((ilo_prevocu_isco08==. | ilo_prevocu_isco08>10) & (ilo_lfs==2&ilo_cat_une==1))
 				replace ilo_prevocu_isco08=. if (ilo_lfs!=2|ilo_cat_une!=1)
-					lab val ilo_prevocu_isco08 isco08_1dig_lab
-					lab var ilo_prevocu_isco08 "Occupation (ISCO-08)"		
+					* labels already defined for main job
+					lab val ilo_prevocu_isco08 ocu_isco08_1digit
+					lab var ilo_prevocu_isco08 "Previous occupation (ISCO-08)"
+					
 
 		* Aggregate:			
 			gen ilo_prevocu_aggregate=.
@@ -1039,14 +1256,16 @@ if ${time} >= 2006 {
 				replace ilo_prevocu_aggregate=5 if ilo_prevocu_isco08==9
 				replace ilo_prevocu_aggregate=6 if ilo_prevocu_isco08==10
 				replace ilo_prevocu_aggregate=7 if ilo_prevocu_isco08==11
-					lab val ilo_prevocu_aggregate ocu_aggr_lab
-					lab var ilo_prevocu_aggregate "Occupation (Aggregate) - Main job"	
+					* labels already defined for main job
+						lab val ilo_prevocu_aggregate ocu_aggr_lab
+						lab var ilo_prevocu_aggregate "Previous occupation (Aggregate)"	
 					
 					
 		* Skill level
 		recode ilo_prevocu_isco08 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_prevocu_skill)
-		lab val ilo_prevocu_skill ilo_job1_ocu_skill
-		lab var ilo_prevocu_skill "Occupation (Skill level)"
+                * labels already defined for main job
+			    lab val ilo_prevocu_skill ocu_skill_lab
+			    lab var ilo_prevocu_skill "Previous occupation (Skill level)"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------

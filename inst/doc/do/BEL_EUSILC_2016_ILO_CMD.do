@@ -32,7 +32,7 @@ global outpath "${path}\\${country}\\${source}\\${time}"
 
 cd "$inpath"
 	use ${inputFile}, clear
-	
+	compress
 ********************************************************************************
 ********************************************************************************
 *                                                                              *
@@ -81,7 +81,17 @@ cd "$inpath"
 		lab def time_lab 1 "$time"
 		lab val ilo_time time_lab
 		lab var ilo_time "Time (Gregorian Calendar)"
-		
+
+*********************************************************************************************
+
+* create local for Year and quarter
+
+*********************************************************************************************			
+   decode ilo_time, gen(to_drop)
+   split to_drop, generate(to_drop_) parse(Q)
+   destring to_drop_1, replace force
+              local Y = to_drop_1 in 1
+drop to_drop		
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *
@@ -386,23 +396,26 @@ cd "$inpath"
                                          17 "Q - Extraterritorial organizations and bodies"	18 "X - Not elsewhere classified"			
 			    lab val ilo_job1_eco_isic3 eco_isic3_1digit
 			    lab var ilo_job1_eco_isic3 "Economic activity (ISIC Rev. 3.1) - main job"
-	
+*/
+
+  if `Y' < 2008 { 
+		
 	* Aggregate level
 	gen ilo_job1_eco_aggregate=.
-		replace ilo_job1_eco_aggregate=1 if inlist(ilo_job1_eco_isic3,1,2)
-		replace ilo_job1_eco_aggregate=2 if ilo_job1_eco_isic3==4
-		replace ilo_job1_eco_aggregate=3 if ilo_job1_eco_isic3==6
-		replace ilo_job1_eco_aggregate=4 if inlist(ilo_job1_eco_isic3,3,5)
-		replace ilo_job1_eco_aggregate=5 if inrange(ilo_job1_eco_isic3,7,11)
-		replace ilo_job1_eco_aggregate=6 if inrange(ilo_job1_eco_isic3,12,17)
-		replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_isic3==18
-			    lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
-			lab val ilo_job1_eco_aggregate eco_aggr_lab
-			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
+		replace ilo_job1_eco_aggregate=1 if inlist(PL110, "a+b") & ilo_lfs == 1
+	   replace ilo_job1_eco_aggregate=2 if inlist(PL110, "c+d+e") & ilo_lfs == 1
+	   replace ilo_job1_eco_aggregate=3 if inlist(PL110, "f") & ilo_lfs == 1
+	   * replace ilo_job1_eco_aggregate=4 if  & ilo_lfs == 1
+	   replace ilo_job1_eco_aggregate=5 if inlist(PL110, "g", "h", "i", "j", "k") & ilo_lfs == 1
+	   replace ilo_job1_eco_aggregate=6 if inlist(PL110, "l", "m", "n", "o+p+q") & ilo_lfs == 1
+	   replace ilo_job1_eco_aggregate=7 if !inrange(ilo_job1_eco_aggregate,1,6)  & ilo_lfs == 1
+			   lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+			  					    5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								    6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			   lab val ilo_job1_eco_aggregate eco_aggr_lab
+			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 	
-*/
+}
     *---------------------------------------------------------------------------
 	* ISIC REV 4
 	*---------------------------------------------------------------------------
@@ -470,7 +483,7 @@ cd "$inpath"
 			    lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
 */
    * Aggregate level
-   
+   if `Y' > 2007 { 
 
    gen ilo_job1_eco_aggregate=.
 	   replace ilo_job1_eco_aggregate=1 if inlist(PL111, "a") & ilo_lfs == 1
@@ -486,7 +499,7 @@ cd "$inpath"
 			   lab val ilo_job1_eco_aggregate eco_aggr_lab
 			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
-
+}
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			               Occupation ('ilo_ocu') 	                           *
@@ -497,14 +510,14 @@ cd "$inpath"
     ***********
     * MAIN JOB:
     ***********
-/*
+
     *---------------------------------------------------------------------------
 	* ISCO 88
 	*---------------------------------------------------------------------------
-
+ if `Y' < 2011 {
 	* 2-digit level 
     gen ilo_job1_ocu_isco88_2digits = . 
-	    replace ilo_job1_ocu_isco88_2digits =     if ilo_lfs==1
+	    replace ilo_job1_ocu_isco88_2digits = PL050    if ilo_lfs==1
 		replace ilo_job1_ocu_isco88_2digits = .   if ilo_lfs!=1
 		        lab def ocu_isco88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers"	///
                                            21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals"	///
@@ -518,7 +531,7 @@ cd "$inpath"
 			
     * 1-digit level
 	gen ilo_job1_ocu_isco88=.
-	    replace ilo_job1_ocu_isco88=11 if inlist(ilo_job1_ocu_isco88_2digits,) & ilo_lfs==1                          // Not elsewhere classified
+	    replace ilo_job1_ocu_isco88=11 if ilo_job1_ocu_isco88_2digits == . & ilo_lfs==1                          // Not elsewhere classified
 		replace ilo_job1_ocu_isco88=int(ilo_job1_ocu_isco88_2digits/10) if (ilo_job1_ocu_isco88==. & ilo_lfs==1)     // The rest of the occupations
 		replace ilo_job1_ocu_isco88=10 if (ilo_job1_ocu_isco88==0 & ilo_lfs==1)                                      // Armed forces
 		        lab def ocu_isco88_1digit 1 "1 - Legislators, senior officials and managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerks"	///
@@ -550,14 +563,20 @@ cd "$inpath"
 				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
 			    lab val ilo_job1_ocu_skill ocu_skill_lab
 			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
-*/				
+
+	drop 		ilo_job1_ocu_isco88_2digits	
+}				
     *---------------------------------------------------------------------------
 	* ISCO 08
 	*---------------------------------------------------------------------------
 	
+
+	
 	* 2-digit level 
-    gen ilo_job1_ocu_isco08_2digits = . 
-	    replace ilo_job1_ocu_isco08_2digits =  PL051   if ilo_lfs==1
+ if `Y' > 2010 {
+ gen ilo_job1_ocu_isco08_2digits = . 
+	
+	replace ilo_job1_ocu_isco08_2digits =  PL051   if ilo_lfs==1
 		replace ilo_job1_ocu_isco08_2digits = .   if ilo_lfs!=1
 		        lab def ocu_isco08_2digits 1 "01 - Commissioned armed forces officers"	2 "02 - Non-commissioned armed forces officers"	3 "03 - Armed forces occupations, other ranks"	11 "11 - Chief executives, senior officials and legislators"	///
                                            12 "12 - Administrative and commercial managers"	13 "13 - Production and specialised services managers"	14 "14 - Hospitality, retail and other services managers"	21 "21 - Science and engineering professionals"	///
@@ -608,6 +627,12 @@ cd "$inpath"
 			    lab val ilo_job1_ocu_skill ocu_skill_lab
 			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
 				
+	drop ilo_job1_ocu_isco08_2digits
+  }
+  
+  
+  
+  
   
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -763,7 +788,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 * Comment: 
-		
+ if `Y' > 2008 {		
 	gen ilo_job1_job_time=.
 		replace ilo_job1_job_time=2 if inlist(PL031,1,3)  & ilo_lfs==1     // Full-time
 		replace ilo_job1_job_time=1 if inlist(PL031,2,4)  & ilo_lfs==1     // Part-time
@@ -771,6 +796,16 @@ cd "$inpath"
 			    lab def job_time_lab 1 "1 - Part-time" 2 "2 - Full-time" 3 "3 - Unknown"
 			    lab val ilo_job1_job_time job_time_lab
 			    lab var ilo_job1_job_time "Job (Working time arrangement)"
+}
+ if `Y' < 2009 {		
+	gen ilo_job1_job_time=.
+		replace ilo_job1_job_time=2 if inlist(PL030,1)  & ilo_lfs==1     // Full-time
+		replace ilo_job1_job_time=1 if inlist(PL030,2)  & ilo_lfs==1     // Part-time
+		replace ilo_job1_job_time=3 if ilo_job1_job_time==. & ilo_lfs==1
+			    lab def job_time_lab 1 "1 - Part-time" 2 "2 - Full-time" 3 "3 - Unknown"
+			    lab val ilo_job1_job_time job_time_lab
+			    lab var ilo_job1_job_time "Job (Working time arrangement)"
+}
 			
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 * Files created: Standard variables MUS_CMPHS_2008_FULL.dta and MUS_CMPHS_2008_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 22 May 2018
-* Last updated: 22 May 2018
+* Last updated: 25 May 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -736,6 +736,12 @@ cd "$inpath"
 	    replace ilo_job1_lri_ees = income if ilo_job1_ste_aggregate==1
 	    replace ilo_job1_lri_ees = . if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
+				
+	* Self-employed
+	gen ilo_job1_lri_slf = .
+	    replace ilo_job1_lri_slf = income if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf = . if ilo_job1_lri_slf==99999 | ilo_lfs!=1
+		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"				
 			
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -750,10 +756,7 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_tru') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Even though there's information to define it with two criteria (available
-*            to work more hours and worked less than a threshold), it is not 
-*            defined due to the huge differences with posterior estimates using
-*            three criteria.
+* Comment: - No information available.
 			
 *-------------------------------------------------------------------------------
 *-------------------------------------------------------------------------------
@@ -915,27 +918,50 @@ cd "$inpath"
 *		Degree of labour market attachment ('ilo_olf_dlma') 	               * 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Even though there is information to define the two first categories
-*            of this variable, it is not made due to the high proportion of people
-*            outside the labour force not classified and the jump when comparing
-*            with posterior years.
+* Comment: - No information available concerning willingness, therefore, categories
+*            3 and 4 are not possible to be produced.
+
+	gen ilo_olf_dlma=.
+		replace ilo_olf_dlma = 1 if lookingwork==1 & availwork==2 & ilo_lfs==3      // Seeking, not available
+		replace ilo_olf_dlma = 2 if lookingwork==2 & availwork==1 & ilo_lfs==3	    // Not seeking, available
+		* replace ilo_olf_dlma = 3 if 		                                        // Not seeking, not available, willing
+		* replace ilo_olf_dlma = 4 if 		                                        // Not seeking, not available, not willing
+		replace ilo_olf_dlma = 5 if	(ilo_olf_dlma==. & ilo_lfs==3)	                // Not classified 
+	 		    lab def dlma_lab 1 "1 - Seeking, not available (Unavailable jobseekers)" 2 "2 - Not seeking, available (Available potential jobseekers)" ///
+							     3 "3 - Not seeking, not available, willing (Willing non-jobseekers)" 4 "4 - Not seeking, not available, not willing" 5 "X - Not elsewhere classified"
+			    lab val ilo_olf_dlma dlma_lab 
+			    lab var ilo_olf_dlma "Labour market attachment (Degree of)"
 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Reasons for not seeking a job ('ilo_olf_reason') 	               *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Even though the reason for not seeking a job is asked, this question
-*            is only answered by those not looking for a job but who want to work
-*            and therefore only few OLF persons would be classified. Thus, it is
-*            not defined.
+* Comment: - 2007 & 2008: in jail is classified under "not elsewhere classified".
+
+	gen ilo_olf_reason=.
+		replace ilo_olf_reason=1 if inlist(whynotlook,5,9,10) & ilo_lfs==3      // Labour market 
+		* replace ilo_olf_reason=2 if                                           // Other labour market reasons
+		replace ilo_olf_reason=3 if inlist(whynotlook,1,2,4,6,7) & ilo_lfs==3   // Personal/Family-related
+		replace ilo_olf_reason=4 if inlist(whynotlook,3,11) & ilo_lfs==3        // Does not need/want to work
+		replace ilo_olf_reason=5 if ilo_olf_reason==. & ilo_lfs==3              // Not elsewhere classified
+		        lab def lab_olf_reason 1 "1 - Labour market" 2 " 2 - Other labour market reasons" 3 "3 - Personal/Family-related"  ///
+			                           4 "4 - Does not need/want to work" 5 "5 - Not elsewhere classified"
+				lab val ilo_olf_reason lab_olf_reason
+				lab var ilo_olf_reason "Labour market attachment (Reasons for not seeking a job)"
 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			      Discouraged job-seekers ('ilo_dis') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: - Not defined due to the lack of classification in the previous variable.
+* Comment: 
+
+	gen ilo_dis=.
+	    replace ilo_dis=1 if !inlist(ilo_lfs,1,2) & availwork==1 & ilo_olf_reason==1
+			    lab def ilo_dis_lab 1 "Discouraged job-seekers" 
+			    lab val ilo_dis ilo_dis_lab
+			    lab var ilo_dis "Discouraged job-seekers"
 			
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------

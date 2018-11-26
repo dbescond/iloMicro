@@ -2,10 +2,10 @@
 * DATASET USED: EUS_2010_11
 * NOTES: 
 * Files created: Standard variables on EUS Fiji
-* Authors: DPAU
-* Who last updated the file: DPAU
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 16 November 2017
-* Last updated: 28 November 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "FJI"
 global source "EUS"
 global time "2011"
@@ -229,6 +229,35 @@ cd "$inpath"
 				    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				    lab val ilo_edu_attendance edu_attendance_lab
 				    lab var ilo_edu_attendance "Education (Attendance)"
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: no info on Union/Cohabiting 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if marstat==1                                // Single
+		replace ilo_mrts_details=2 if marstat==2                                // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if marstat==3                                // Widowed
+		replace ilo_mrts_details=5 if inlist(marstat,4,5)                       // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -646,15 +675,15 @@ cd "$inpath"
 *			Duration of unemployment ('ilo_dur') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comments: - Original question refers to the number of weeks seeking for a job.
+* Comments: 
 
 	gen ilo_dur_details=.
 	    replace ilo_dur_details=1 if (unemp7days==1 & ilo_lfs==2)                         // Less than 1 month
 		replace ilo_dur_details=2 if (inlist(unemp7days,2,3) & ilo_lfs==2)                // 1 to 3 months
 		replace ilo_dur_details=3 if (inlist(unemp7days,4,5,6) & ilo_lfs==2)              // 3 to 6 months
-		replace ilo_dur_details=4 if (inlist(unemp7days,7,8,9,10,11) & ilo_lfs==2)        // 6 to 12 months (between 24 and 47 weeks)
-		replace ilo_dur_details=5 if (unemp7days==12 & ilo_lfs==2)                        // 12 to 24 months (between 48 and 95 weeks)
-		replace ilo_dur_details=6 if (unemp7days==13 & ilo_lfs==2)                        // 24 months or more (96 weeks or more)
+		replace ilo_dur_details=4 if (inlist(unemp7days,7,8,9,10,11) & ilo_lfs==2)        // 6 to 12 months
+		replace ilo_dur_details=5 if (unemp7days==12 & ilo_lfs==2)                        // 12 to 24 months
+		replace ilo_dur_details=6 if (unemp7days==13 & ilo_lfs==2)                        // 24 months or more
 		replace ilo_dur_details=7 if (ilo_dur_details==. & ilo_lfs==2)                    // Not elsewhere classified
 		        lab def ilo_unemp_det 1 "Less than 1 month" 2 "1 month to less than 3 months" 3 "3 months to less than 6 months" ///
 									  4 "6 months to less than 12 months" 5 "12 months to less than 24 months" 6 "24 months or more" ///

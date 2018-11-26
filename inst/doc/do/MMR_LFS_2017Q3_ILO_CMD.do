@@ -4,7 +4,7 @@
 * Files created: Standard variables MMR_LFS_2017Q3_FULL.dta and MMR_LFS_2017Q3_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 13 June 2018
-* Last updated: 13 June 2018
+* Last updated: 20 June 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -67,7 +67,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 
 	gen ilo_wgt=.
-	    replace ilo_wgt=bm
+	    replace ilo_wgt=tw
 		lab var ilo_wgt "Sample weight"
 	
 * ------------------------------------------------------------------------------

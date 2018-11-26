@@ -1,10 +1,10 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - COUNTRY, TIME
-* DATASET USED: COUNTRY, SURVEY'S ACRONYM, TIME
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - EGYPT, 2012
+* DATASET USED: Egypt, SWTS, 2012
 * NOTES: 
-* Files created: Standard variables COU_SUR_TIM_FULL.dta and COU_SUR_TIME_ILO.dta
+* Files created: Standard variables EGY_SWTS_2012_FULL.dta and EGY_SWTS_2012_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
-* Starting Date: 27 February 2018
-* Last updated: 14 May 2018
+* Starting Date: 11 July 2018
+* Last updated: 11 July 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -20,10 +20,10 @@ clear all
 set more off
 
 global path "J:\DPAU\MICRO"
-global country "EGY" /*ref_area: ISO 3 Code from the workflow*/
-global source "SWTS"  /*survey: Acronym from the workflow*/
-global time "2012"  /*time*/
-global inputFile "EGY_SWTS_2012.dta" /*name of the input file in stata format*/
+global country "EGY"
+global source "SWTS"
+global time "2012" 
+global inputFile "EGY_SWTS_2012.dta"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
@@ -57,7 +57,6 @@ cd "$inpath"
 *			               Identifier ('ilo_key')		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	gen ilo_key=_n
 		lab var ilo_key "Key unique identifier per individual"
@@ -67,7 +66,6 @@ cd "$inpath"
 *		             	 Sample Weight ('ilo_wgt') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 
 	gen ilo_wgt=.
 	    replace ilo_wgt= wgt
@@ -78,7 +76,6 @@ cd "$inpath"
 *			                Time period ('ilo_time')		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	gen ilo_time=1
 		lab def time_lab 1 "$time"
@@ -98,7 +95,6 @@ cd "$inpath"
 *		            	Geographical coverage ('ilo_geo') 		               *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 	
 	gen ilo_geo=.
 	    replace ilo_geo=1 if urbrur==1         // Urban 
@@ -112,7 +108,6 @@ cd "$inpath"
 *			                     Sex ('ilo_sex') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 	
 	gen ilo_sex=.
 	    replace ilo_sex=1 if  sex==1           // Male
@@ -126,7 +121,6 @@ cd "$inpath"
 *			                    Age ('ilo_age') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 	
 	gen ilo_age=.
 	    replace ilo_age= age
@@ -179,7 +173,6 @@ cd "$inpath"
 *			           Level of education ('ilo_edu') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
     *---------------------------------------------------------------------------
 	* ISCED 97
@@ -187,7 +180,7 @@ cd "$inpath"
 	
 	* Detailed
 	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if a504==1                       // No schooling
+		replace ilo_edu_isced97=1 if a504==1 | currently_attend==3                       // No schooling
 		replace ilo_edu_isced97=2 if a504==2                          // Pre-primary education
 		replace ilo_edu_isced97=3 if a504==3                          // Primary education or first stage of basic education
 		replace ilo_edu_isced97=4 if inlist(a504,4,5)                          // Lower secondary education or second stage of basic education
@@ -213,14 +206,11 @@ cd "$inpath"
 			    label val ilo_edu_aggregate edu_aggr_lab
 			    label var ilo_edu_aggregate "Level of education (Aggregate levels)"
 				
-    
-
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *		  	 Educational attendance ('ilo_edu_attendance') 		               *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 			
     gen ilo_edu_attendance=.
 		replace ilo_edu_attendance=1 if   currently_attend==1                     // Attending
@@ -234,8 +224,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 *			           Marital status ('ilo_mrts') 	                           *
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: 
+* ------------------------------------------------------------------------------ 
 	
 	* Detailed
 	gen ilo_mrts_details=.
@@ -264,28 +253,26 @@ cd "$inpath"
 *			Disability status ('ilo_dsb_details')                              *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
-/*
+
     * Detailed
-	gen ilo_dsb_details=.
-	    replace ilo_dsb_details=1 if                        // No, no difficulty
-		replace ilo_dsb_details=2 if      	                // Yes, some difficulty
-		replace ilo_dsb_details=3 if     	                // Yes, a lot of difficulty
-		replace ilo_dsb_details=4 if   		                // Cannot do it at all
+       gen ilo_dsb_details=.
+             replace ilo_dsb_details=1 if (a301==1 & a302==1 & a303==1 & a304==1 )                            
+             replace ilo_dsb_details=2 if (a301==2 | a302==2 | a303==2 | a304==2 )                                                 
+             replace ilo_dsb_details=3 if (a301==3 | a302==3 | a303==3 | a304==3 )                                                 
+             replace ilo_dsb_details=4 if (a301==4 | a302==4 | a303==4 | a304==4 )
+
 				label def dsb_det_lab 1 "1 - No, no difficulty" 2 "2 - Yes, some difficulty" 3 "3 - Yes, a lot of difficulty" 4 "4 - Cannot do it at all"
 				label val ilo_dsb_details dsb_det_lab
 				label var ilo_dsb_details "Disability status (Details)"
-*/
     * Aggregate  	
 	gen ilo_dsb_aggregate=.
-	    replace ilo_dsb_aggregate=1 if (inlist(a301,1,2)| inlist(a302,1,2)| ///
-										inlist(a304,1,2)|inlist(a303,1,2))   // Persons without disability
-		replace ilo_dsb_aggregate=2 if (inlist(a301,3,4)| inlist(a302,3,4)| ///
-										inlist(a304,3,4)|inlist(a303,3,4))  // Persons with disability
+	    replace ilo_dsb_aggregate=1 if (ilo_dsb_details==1 | ilo_dsb_details==2)   // Persons without disability
+		replace ilo_dsb_aggregate=2 if (ilo_dsb_details==3 | ilo_dsb_details==4)  // Persons with disability
 				label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
 				label val ilo_dsb_aggregate dsb_lab
 				label var ilo_dsb_aggregate "Disability status (Aggregate)"
-				
+
+
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *
@@ -298,8 +285,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 *			      Working age population ('ilo_wap')	                       *
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: 	
+* ------------------------------------------------------------------------------ 	
 
 	gen ilo_wap=.
 		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
@@ -309,15 +295,14 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 *			       Labour Force Status ('ilo_lfs')                             *       
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: 
+* ------------------------------------------------------------------------------ 
 	
 	gen ilo_lfs=.
         replace ilo_lfs=1 if (emp_lastw1==1 | emp_lastw2==1 | emp_lastw3==1 | emp_lastw4==1 | ///
 		emp_lastw5==1 | emp_lastw6==1 |emp_lastw7==1 ) & ilo_wap==1						// Employed: ILO definition
 		replace ilo_lfs=1 if emp_temp_absent==1 & ilo_wap==1						// Employed: temporary absent
 		replace ilo_lfs=2 if inlist(seekingjob,1,2) & availability==1  & ilo_lfs!=1 & ilo_wap==1			// Unemployed: three criteria
-		replace ilo_lfs=2 if foundjob==1 & startbusiness==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
+		replace ilo_lfs=2 if (foundjob==1 | startbusiness==1) & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
 	    replace ilo_lfs=3 if !inlist(ilo_lfs,1,2) & ilo_wap==1		// Outside the labour force
 				label define label_ilo_lfs 1 "1 - Employed" 2 "2 - Unemployed" 3 "3 - Outside Labour Force"
 				label value ilo_lfs label_ilo_lfs
@@ -338,7 +323,6 @@ cd "$inpath"
 *			       Status in employment ('ilo_ste')                            * 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
    * MAIN JOB:
    * ICSE 1993
@@ -370,7 +354,6 @@ cd "$inpath"
 *			            Economic activity ('ilo_eco')                          *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 
     ***********
     * MAIN JOB:
@@ -456,22 +439,17 @@ cd "$inpath"
 								    6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
 			   lab val ilo_job1_eco_aggregate eco_aggr_lab
 			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
-
-
-    
 			   
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			               Occupation ('ilo_ocu') 	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
     ***********
     * MAIN JOB:
     ***********
 
-    
     *---------------------------------------------------------------------------
 	* ISCO 08
 	*---------------------------------------------------------------------------
@@ -536,10 +514,9 @@ cd "$inpath"
 *	Institutional sector of economic activities ('ilo_ins_sector')		       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 		
 	gen ilo_job1_ins_sector=.
-		replace ilo_job1_ins_sector=1 if publicadmin==2                       & ilo_lfs==1    // Public
+		replace ilo_job1_ins_sector=1 if publicadmin==1 & ilo_lfs==1    		// Public
 		replace ilo_job1_ins_sector=2 if ilo_job1_ins_sector==. & ilo_lfs==1    // Private
 			    lab def ins_sector_lab 1 "1 - Public" 2 "2 - Private"
 			    lab values ilo_job1_ins_sector ins_sector_lab
@@ -550,7 +527,6 @@ cd "$inpath"
 *		               Hours of work ('ilo_how')  	                           *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 				
     ***********
     * MAIN JOB:
@@ -577,13 +553,12 @@ cd "$inpath"
 				lab var ilo_job1_how_actual_bands "Weekly hours actually worked bands - main job"
 	
     
-		
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Working time arrangement ('ilo_job_time')		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
+* Comment: threshold set at 40 hours a week
 			
 	gen ilo_job1_job_time=.
 		replace ilo_job1_job_time=2 if ilo_job1_how_actual>=40  & ilo_lfs==1                             // Full-time
@@ -598,7 +573,6 @@ cd "$inpath"
 *		    	Type of contract ('ilo_job_contract') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 	
 	gen ilo_job1_job_contract=.
 		replace ilo_job1_job_contract=1 if duration_contract==1 & ilo_lfs==1               				// Permanent
@@ -613,7 +587,7 @@ cd "$inpath"
 *  Informal/formal economy: ('ilo_job1_ife_prod'/'ilo_job1_ife_nature') 	   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
+
 /* Useful questions:
           - Institutional sector: publicadmin
 		  - Private household identification: 
@@ -629,8 +603,8 @@ cd "$inpath"
 */
     * Social Security:
 	gen social_security=.
-	    replace social_security=1 if benefit_servj==1 &    ilo_lfs==1          // social security (proxy)
-		replace social_security=2 if benefit_servj==2  &  ilo_lfs==1          // no social security (proxy)
+	    replace social_security=1 if benefit_servj==1 & ilo_lfs==1          // social security (proxy)
+		replace social_security=2 if benefit_servj==2 & ilo_lfs==1          // no social security (proxy)
 	
     * 1) UNIT OF PRODUCTION: FORMAL/INFORMAL SECTOR
 	gen ilo_job1_ife_prod=.
@@ -651,9 +625,9 @@ cd "$inpath"
 	gen ilo_job1_ife_nature=.
 	    replace ilo_job1_ife_nature=2 if ilo_lfs==1 & ///
 	                                     ((statusinemp==1 & social_security==1) | ///
-										 (statusinemp==1 & benefit_servd==1 & benefit_servc==1) | ///
-										 (inlist(statusinemp,2,4)&ilo_job1_ife_prod==2) | ///
-										 (inlist(statusinemp,3)&ilo_job1_ife_prod==2))
+										 (statusinemp==1 & inlist(benefit_servj,3,.)& benefit_servd==1 & benefit_servc==1) | ///
+										 (inlist(statusinemp,2,3,4)&ilo_job1_ife_prod==2))
+										 
 	    replace ilo_job1_ife_nature=1 if ilo_lfs==1 & ilo_job1_ife_nature!=2
                 lab def ife_nature_lab 1 "1 - Persons with informal main job" 2 "2 - Persons with formal main job"
 		        lab val ilo_job1_ife_nature ife_nature_lab
@@ -664,24 +638,31 @@ cd "$inpath"
 *	    Monthly labour related income ('ilo_lri_ees' and 'ilo_lri_slf')  	   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: variable a913, range of wages. Is it enough?
-/* 					a920 for self-employed
+* Comment: Average wages per class as questionnaire only asks ranges of wages and not exact amount. 
+
     ***********
     * MAIN JOB:
     ***********
 	
 	* Employees
 	gen ilo_job1_lri_ees = .
-	    replace ilo_job1_lri_ees =       if ilo_job1_ste_aggregate==1
+		replace ilo_job1_lri_ees = 300 if a913==1 & ilo_job1_ste_aggregate==1
+		replace ilo_job1_lri_ees = (499+300)/2 if a913==2 & ilo_job1_ste_aggregate==1
+		replace ilo_job1_lri_ees = (999+500)/2 if a913==3 & ilo_job1_ste_aggregate==1
+		replace ilo_job1_lri_ees = (2999+1000)/2 if a913==4 & ilo_job1_ste_aggregate==1
+		replace ilo_job1_lri_ees = 3000 if a913==5 & ilo_job1_ste_aggregate==1
 	    replace ilo_job1_lri_ees = .     if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
 	
 	* Self-employed
 	gen ilo_job1_lri_slf = .
-	    replace ilo_job1_lri_slf =       if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf = 1000 if a920==1 & ilo_job1_ste_aggregate==2
+		replace ilo_job1_lri_slf = (1000+1999)/2 if a920==2 & ilo_job1_ste_aggregate==2
+		replace ilo_job1_lri_slf = (2000+4999)/2 if a920==3 & ilo_job1_ste_aggregate==2
+		replace ilo_job1_lri_slf = 5000 if a920==4 & ilo_job1_ste_aggregate==2
 	    replace ilo_job1_lri_slf = .     if ilo_lfs!=1
 		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"
-			*/	
+		
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *
@@ -695,14 +676,13 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_tru') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: no information on current availability for people working
-/*
+
 	gen ilo_joball_tru = .
-	    replace ilo_joball_tru = 1 if ilo_joball_how_usual<=  &  &  & ilo_lfs==1
+	    replace ilo_joball_tru = 1 if ilo_job1_how_actual<=35  & likeworkmore==1  & hours_likemore>0 & ilo_lfs==1
 			    lab def tru_lab 1 "Time-related underemployed"
 			    lab val ilo_joball_tru tru_lab
 			    lab var ilo_joball_tru "Time-related underemployed"
-	*/		
+		
 				
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -716,8 +696,7 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 *			   Duration of unemployment ('ilo_dur')  	                       * 
 * ------------------------------------------------------------------------------
-* ------------------------------------------------------------------------------
-* Comment: 
+* ------------------------------------------------------------------------------ 
 
 	* Detailed categories		
     gen ilo_dur_details=.
@@ -760,13 +739,12 @@ cd "$inpath"
 *		Degree of labour market attachment ('ilo_olf_dlma') 	               * 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 
 	gen ilo_olf_dlma=.
-		replace ilo_olf_dlma = 1 if  inlist(seekingjob,1,2) &  availability==2 & ilo_lfs==3      // Seeking, not available
-		replace ilo_olf_dlma = 2 if  seekingjob==3 & availability==1 & ilo_lfs==3	    // Not seeking, available
-		replace ilo_olf_dlma = 3 if seekingjob==3  & availability==2 &	wanttowork==1 & ilo_lfs==3      // Not seeking, not available, willing
-		replace ilo_olf_dlma = 4 if seekingjob==3  & availability==2 &	wanttowork==2 & ilo_lfs==3      // Not seeking, not available, not willing
+		replace ilo_olf_dlma = 1 if  inlist(seekingjob,1,2) &  availability==2 & ilo_lfs==3      	// Seeking, not available
+		replace ilo_olf_dlma = 2 if  seekingjob==3 & availability==1 & ilo_lfs==3	    			// Not seeking, available
+		replace ilo_olf_dlma = 3 if seekingjob==3  & availability==2 &	wanttowork==1 & ilo_lfs==3  // Not seeking, not available, willing
+		replace ilo_olf_dlma = 4 if seekingjob==3  & availability==2 &	wanttowork==2 & ilo_lfs==3  // Not seeking, not available, not willing
 		replace ilo_olf_dlma = 5 if	(ilo_olf_dlma==. & ilo_lfs==3)	// Not classified 
 	 		    lab def dlma_lab 1 "1 - Seeking, not available (Unavailable jobseekers)" 2 "2 - Not seeking, available (Available potential jobseekers)" ///
 							     3 "3 - Not seeking, not available, willing (Willing non-jobseekers)" 4 "4 - Not seeking, not available, not willing" 5 "X - Not elsewhere classified"
@@ -778,14 +756,13 @@ cd "$inpath"
 *			Reasons for not seeking a job ('ilo_olf_reason') 	               *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
 
 		gen ilo_olf_reason=.
-			replace ilo_olf_reason=1 if inlist(reason_notseeking,7,8,9,10,11)          & ilo_lfs==3             // Labour market 
+			replace ilo_olf_reason=1 if inlist(reason_notseeking,7,8,9,10,11)  & ilo_lfs==3             // Labour market 
 			replace ilo_olf_reason=2 if inlist(reason_notseeking,1,2)          & ilo_lfs==3             // Other labour market reasons
-			replace ilo_olf_reason=3 if inlist(reason_notseeking,3,4,5,6)          & ilo_lfs==3             // Personal/Family-related
-			replace ilo_olf_reason=4 if  reason_notavailable==6 & ilo_lfs==3             // Does not need/want to work
-			replace ilo_olf_reason=5 if reason_notseeking==99 & ilo_olf_reason==. & ilo_lfs==3     // Not elsewhere classified
+			replace ilo_olf_reason=3 if inlist(reason_notseeking,3,4,5,6)       & ilo_lfs==3             // Personal/Family-related
+			replace ilo_olf_reason=4 if reason_notavailable==6 & ilo_lfs==3             // Does not need/want to work
+			replace ilo_olf_reason=5 if ((reason_notseeking==99& !reason_notavailable==6) | ilo_olf_reason==. )& ilo_lfs==3     // Not elsewhere classified
  			        lab def lab_olf_reason 1 "1 - Labour market" 2 " 2 - Other labour market reasons" 3 "3 - Personal/Family-related"  ///
 				                           4 "4 - Does not need/want to work" 5 "5 - Not elsewhere classified"
 					lab val ilo_olf_reason lab_olf_reason
@@ -796,7 +773,6 @@ cd "$inpath"
 *			      Discouraged job-seekers ('ilo_dis') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	gen ilo_dis=.
 	    replace ilo_dis=1 if !inlist(ilo_lfs,1,2) & availability==1 & ilo_olf_reason==1
@@ -809,7 +785,6 @@ cd "$inpath"
 *  Youth not in education, employment or training (NEETs) ('ilo_neet') 		   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
 
 	  gen ilo_neet=1 if ilo_age_aggregate==2 & ilo_lfs!=1 & ilo_edu_attendance==2
 		  lab def neet_lab 1 "Youth not in education, employment or training"
@@ -827,9 +802,6 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 
 cd "$outpath"
-	drop ilo_age
-	
-	/* Variables computed in-between */
 
 	compress
 		

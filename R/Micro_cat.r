@@ -27,6 +27,8 @@ Micro_cat_label <- function(var, var.name, add.total = FALSE, indicator){
 		# rm(fwk)			
 	# } else{
 	
+		if (str_detect(var.name, '_job2_')){var.name <- gsub('_job2_', '_job1_', var.name)}
+	
 		code <- ilo_tpl$Variable %>% filter(var_name %in%  var.name) %>% 
 						.$code_level %>% 
 						as.numeric%>% {if (add.total) c(0,.) else . }

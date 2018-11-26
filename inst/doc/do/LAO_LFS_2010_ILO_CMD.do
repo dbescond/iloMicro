@@ -1,49 +1,43 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - LAO, 2010
 * DATASET USED: LAO LFS 2010
 * NOTES: 
-* Authors: Deen Lawani
-* Who last updated the file: DPAU
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 03 November 2016
-* Last updated: 11 May 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
-***********************************************************************************************
-***********************************************************************************************
 
-* 			1. SET UP WORK DIRECTORY, FILE NAME, VARIABLES AND FUNCTIONS
+********************************************************************************
+********************************************************************************
+*                                                                              *
+*          1.	Set up work directory, file name, variables and function       *
+*                                                                              *
+********************************************************************************
+********************************************************************************
 
-***********************************************************************************************
-***********************************************************************************************
+clear all 
 
+set more off
 
-***********************************************************************************************
-***********************************************************************************************
+global path "J:\DPAU\MICRO"
+global country "LAO" /*ref_area: ISO 3 Code from the workflow*/
+global source "LFS"  /*survey: Acronym from the workflow*/
+global time "2010"  /*time*/
+global inputFile "LAO_LFS_2010.dta" /*name of the input file in stata format*/
+global inpath "${path}\\${country}\\${source}\\${time}\ORI"
+global temppath "${path}\_Admin"
+global outpath "${path}\\${country}\\${source}\\${time}"
 
-*			Merge files
+********************************************************************************
+********************************************************************************
 
-***********************************************************************************************
-***********************************************************************************************		
-
-	clear all 
-
-	set more off
-
-	global inpath "J:\COMMON\STATISTICS\DPAU\MICRO\LAO\LFS\2010\ORI"
-	global temppath "J:\COMMON\STATISTICS\DPAU\MICRO\_Admin"
-	global outpath "J:\COMMON\STATISTICS\DPAU\MICRO\LAO\LFS\2010"
-
-
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
-* 			Load original dataset
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
-
-	cd "$inpath"
-
-		use "LAO_LFS_2010", clear
-		
+cd "$inpath"
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
+	
 
 
 ************************************************************************************************
@@ -234,6 +228,36 @@
 			label val ilo_edu_attendance edu_att_labell
 			label var ilo_edu_attendance "Education (Attendance)"
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: - the marital status question is made to people aged 12 years or above.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if hl7==2                                    // Single
+		replace ilo_mrts_details=2 if hl7==1                                    // Married
+		replace ilo_mrts_details=3 if hl7==4                                    // Union / cohabiting
+		replace ilo_mrts_details=4 if hl7==6                                    // Widowed
+		replace ilo_mrts_details=5 if inlist(hl7,3,5)                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+							
 			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -442,7 +466,17 @@
 					lab def ocu_aggr_labc 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
 										4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
 					lab val ilo_job1_ocu_aggregate ocu_aggr_labc
-					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - Main job"	
+					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - Main job"
+					
+		* Skill level
+			gen ilo_job1_ocu_skill=.
+				replace ilo_job1_ocu_skill=1 if ilo_job1_ocu_isco08==9                  // Low
+				replace ilo_job1_ocu_skill=2 if inlist(ilo_job1_ocu_isco08,4,5,6,7,8)   // Medium
+				replace ilo_job1_ocu_skill=3 if inlist(ilo_job1_ocu_isco08,1,2,3)       // High
+				replace ilo_job1_ocu_skill=4 if inlist(ilo_job1_ocu_isco08,10,11)       // Not elsewhere classified
+					lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
+					lab val ilo_job1_ocu_skill ocu_skill_lab
+					lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
 	
 
 * -------------------------------------------------------------------------------------------
@@ -725,16 +759,18 @@
 * 	Prepare final datasets
 * -------------------------------------------------------------
 
-* 1 - Full dataset with original variables and ILO ones
+cd "$outpath"
+	drop ilo_age
 	
-	cd "$outpath"
-
-        compress
-		saveold LAO_LFS_2010_FULL, version(12) replace
-
-
-* 2 - Dataset with only 'ILO' variables
-
-		keep ilo*
-		saveold LAO_LFS_2010_ILO, version(12) replace
+	/* Variables computed in-between */
+	*drop
+	compress
+		
+	/* Save dataset including original and ilo variables*/
+	save ${country}_${source}_${time}_FULL,  replace		
+	
+	*Save file only containing ilo_* variables
+	keep ilo*
+	save ${country}_${source}_${time}_ILO, replace
+		
 

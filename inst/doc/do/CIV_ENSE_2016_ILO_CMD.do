@@ -1,10 +1,10 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Côte d'Ivoire, 2016
-* DATASET USED: Côte d'Ivoire - ENSESI - 2016
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - CÃƒ´te d'Ivoire, 2016
+* DATASET USED: CÃƒ´te d'Ivoire - ENSESI - 2016
 * NOTES:
-* Authors: DPAU
-* Who last updated the file: DPAU
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 10 October 2017
-* Last updated: 10 October 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,83 +20,24 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "CIV"
 global source "ENSE"
 global time "2016"
-global input_file "CIV_ENSE_2016"
+global inputFile "CIV_ENSE_2016.dta"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-	* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-				
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							
-							gen `var'=code_level
-							
-							replace `var'=. if code_label`var'==""
-							
-							labmask `var' , val(code_label`var')
-							
-							}				
-				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use "${input_file}", clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
 	
-	rename *, lower
-		
-
 ***********************************************************************************************
 ***********************************************************************************************
 
@@ -292,7 +233,34 @@ cd "$inpath"
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
 
-			
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if a5==8                                     // Single
+		replace ilo_mrts_details=2 if inrange(a5,1,3)                           // Married
+		replace ilo_mrts_details=3 if a5==4                                     // Union / cohabiting
+		replace ilo_mrts_details=4 if a5==7                                     // Widowed
+		replace ilo_mrts_details=5 if inlist(a5,5,6)                            // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"					
 			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -432,17 +400,36 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 
 	/* Classification used: ISIC Rev. 4 */
-
-		* Import value labels
-
-		append using `labels', gen (lab)
+ 
 					
 		* Two digits level
 		
 		gen ilo_job1_eco_isic4_2digits=(e2b_code_citi/1000) if (ilo_lfs==1)
 			replace ilo_job1_eco_isic4_2digits=round(ilo_job1_eco_isic4_2digits,1)
-				lab values ilo_job1_eco_isic4 isic4_2digits
-				lab var ilo_job1_eco_isic4_2digits "Economic activity (ISIC Rev. 4), 2 digit level"
+			    lab def eco_isic4_2digits 1 "01 - Crop and animal production, hunting and related service activities"	2 "02 - Forestry and logging"	3 "03 - Fishing and aquaculture"	5 "05 - Mining of coal and lignite" ///
+                                          6 "06 - Extraction of crude petroleum and natural gas"	7 "07 - Mining of metal ores"	8 "08 - Other mining and quarrying"	9 "09 - Mining support service activities" ///
+                                          10 "10 - Manufacture of food products"	11 "11 - Manufacture of beverages"	12 "12 - Manufacture of tobacco products"	13 "13 - Manufacture of textiles" ///
+                                          14 "14 - Manufacture of wearing apparel"	15 "15 - Manufacture of leather and related products"	16 "16 - Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials"	17 "17 - Manufacture of paper and paper products" ///
+                                          18 "18 - Printing and reproduction of recorded media"	19 "19 - Manufacture of coke and refined petroleum products"	20 "20 - Manufacture of chemicals and chemical products"	21 "21 - Manufacture of pharmaceuticals, medicinal chemical and botanical products" ///
+                                          22 "22 - Manufacture of rubber and plastics products"	23 "23 - Manufacture of other non-metallic mineral products"	24 "24 - Manufacture of basic metals"	25 "25 - Manufacture of fabricated metal products, except machinery and equipment" ///
+                                          26 "26 - Manufacture of computer, electronic and optical products"	27 "27 - Manufacture of electrical equipment"	28 "28 - Manufacture of machinery and equipment n.e.c."	29 "29 - Manufacture of motor vehicles, trailers and semi-trailers" ///
+                                          30 "30 - Manufacture of other transport equipment"	31 "31 - Manufacture of furniture"	32 "32 - Other manufacturing"	33 "33 - Repair and installation of machinery and equipment" ///
+                                          35 "35 - Electricity, gas, steam and air conditioning supply"	36 "36 - Water collection, treatment and supply"	37 "37 - Sewerage"	38 "38 - Waste collection, treatment and disposal activities; materials recovery" ///
+                                          39 "39 - Remediation activities and other waste management services"	41 "41 - Construction of buildings"	42 "42 - Civil engineering"	43 "43 - Specialized construction activities" ///
+                                          45 "45 - Wholesale and retail trade and repair of motor vehicles and motorcycles"	46 "46 - Wholesale trade, except of motor vehicles and motorcycles"	47 "47 - Retail trade, except of motor vehicles and motorcycles"	49 "49 - Land transport and transport via pipelines" ///
+                                          50 "50 - Water transport"	51 "51 - Air transport"	52 "52 - Warehousing and support activities for transportation"	53 "53 - Postal and courier activities" ///
+                                          55 "55 - Accommodation"	56 "56 - Food and beverage service activities"	58 "58 - Publishing activities"	59 "59 - Motion picture, video and television programme production, sound recording and music publishing activities" ///
+                                          60 "60 - Programming and broadcasting activities"	61 "61 - Telecommunications"	62 "62 - Computer programming, consultancy and related activities"	63 "63 - Information service activities" ///
+                                          64 "64 - Financial service activities, except insurance and pension funding"	65 "65 - Insurance, reinsurance and pension funding, except compulsory social security"	66 "66 - Activities auxiliary to financial service and insurance activities"	68 "68 - Real estate activities" ///
+                                          69 "69 - Legal and accounting activities"	70 "70 - Activities of head offices; management consultancy activities"	71 "71 - Architectural and engineering activities; technical testing and analysis"	72 "72 - Scientific research and development" ///
+                                          73 "73 - Advertising and market research"	74 "74 - Other professional, scientific and technical activities"	75 "75 - Veterinary activities"	77 "77 - Rental and leasing activities" ///
+                                          78 "78 - Employment activities"	79 "79 - Travel agency, tour operator, reservation service and related activities"	80 "80 - Security and investigation activities"	81 "81 - Services to buildings and landscape activities" ///
+                                          82 "82 - Office administrative, office support and other business support activities"	84 "84 - Public administration and defence; compulsory social security"	85 "85 - Education"	86 "86 - Human health activities" ///
+                                          87 "87 - Residential care activities"	88 "88 - Social work activities without accommodation"	90 "90 - Creative, arts and entertainment activities"	91 "91 - Libraries, archives, museums and other cultural activities" ///
+                                          92 "92 - Gambling and betting activities"	93 "93 - Sports activities and amusement and recreation activities"	94 "94 - Activities of membership organizations"	95 "95 - Repair of computers and personal and household goods" ///
+                                          96 "96 - Other personal service activities"	97 "97 - Activities of households as employers of domestic personnel"	98 "98 - Undifferentiated goods- and services-producing activities of private households for own use"	99 "99 - Activities of extraterritorial organizations and bodies"
+                lab val ilo_job1_eco_isic4_2digits eco_isic4_2digits
+                lab var ilo_job1_eco_isic4_2digits "Economic activity (ISIC Rev. 4), 2 digits level - main job"
 
 		
 		* One digit level
@@ -469,9 +456,15 @@ cd "$inpath"
 			replace ilo_job1_eco_isic4=19 if inrange(ilo_job1_eco_isic4_2digits,94,96)
 			replace ilo_job1_eco_isic4=20 if inrange(ilo_job1_eco_isic4_2digits,97,98)
 			replace ilo_job1_eco_isic4=21 if ilo_job1_eco_isic4_2digits==99
-			replace ilo_job1_eco_isic4=22 if ilo_job1_eco_isic4_2digits==. & ilo_lfs==1
-				lab val ilo_job1_eco_isic4 isic4
-				lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4)"
+			replace ilo_job1_eco_isic4=22 if (ilo_job1_eco_isic4==. & ilo_lfs==1)
+		        lab def eco_isic4_1digit 1 "A - Agriculture, forestry and fishing"	2 "B - Mining and quarrying"	3 "C - Manufacturing"	4 "D - Electricity, gas, steam and air conditioning supply" ///
+                                         5 "E - Water supply; sewerage, waste management and remediation activities"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles and motorcycles"	8 "H - Transportation and storage" ///
+                                         9 "I - Accommodation and food service activities"	10 "J - Information and communication"	11 "K - Financial and insurance activities"	12 "L - Real estate activities" ///
+                                         13 "M - Professional, scientific and technical activities"	14 "N - Administrative and support service activities"	15 "O - Public administration and defence; compulsory social security"	16 "P - Education" ///
+                                         17 "Q - Human health and social work activities"	18 "R - Arts, entertainment and recreation"	19 "S - Other service activities"	20 "T - Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use" ///
+                                         21 "U - Activities of extraterritorial organizations and bodies"	22 "X - Not elsewhere classified"		
+  	  		    lab val ilo_job1_eco_isic4 eco_isic4_1digit
+			    lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
 
 
 	* Classification aggregated level
@@ -484,11 +477,11 @@ cd "$inpath"
 			replace ilo_job1_eco_aggregate=5 if inrange(ilo_job1_eco_isic4,7,14)
 			replace ilo_job1_eco_aggregate=6 if inrange(ilo_job1_eco_isic4,15,21)
 			replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_isic4==22
-				lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-									5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-									6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
-				lab val ilo_job1_eco_aggregate eco_aggr_lab
-				lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+			   lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+			  					    5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								    6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			   lab val ilo_job1_eco_aggregate eco_aggr_lab
+			   lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
 
 * -------------------------------------------------------------------------------------------
@@ -497,11 +490,11 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
 	
-	/* Classification used: ISCO 08  */
+* Comment: National Classification of ISCO with mapping can't be found. Variable not produced.
 				
 	* MAIN JOB:	
 	
-		* ISCO 08 - 2 digit
+/*		* ISCO 08 - 2 digit
 			gen ilo_job1_ocu_isco08_2digits=(e1b_code_citp/10) if (ilo_lfs==1)
 				replace ilo_job1_ocu_isco08_2digits=round(ilo_job1_ocu_isco08_2digits,1)
 					lab values ilo_job1_ocu_isco08_2digits ISCO_08_cod
@@ -555,7 +548,7 @@ cd "$inpath"
 
 ****** Not feasible: ISCO Codes are not included ****** 
 
-
+*/
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Institutional sector of economic activities ('ilo_job1_ins_sector')
@@ -614,10 +607,10 @@ cd "$inpath"
 				* E15 - Taille
 				* E16b - Enregistrement
 				* E17 - Lieu de travail
-				* E18 - Comptabilité
+				* E18 - ComptabilitÃƒ©
 				* E25b - Pension
-				* E25f - Congés payés
-				* E25d - Service médical particulier	*/
+				* E25f - CongÃƒ©s payÃƒ©s
+				* E25d - Service mÃƒ©dical particulier	*/
 
 	* 1) Unit of production - Formal / Informal Sector
 	
@@ -631,7 +624,7 @@ cd "$inpath"
 				
 				replace ilo_job1_ife_prod=2 if (inlist(e4,1,2,5) | inlist(e18,2,3) | (e16ba==1 | e16bb==1 | e16bc==1 | e16ca==1)) & ilo_lfs==1
 				
-				replace ilo_job1_ife_prod=3 if (e4==8 | ilo_job1_eco_isic4_2digits==97 | ilo_job1_ocu_isco08_2digits==63) & ilo_lfs==1
+				replace ilo_job1_ife_prod=3 if (e4==8 | ilo_job1_eco_isic4_2digits==97) & ilo_lfs==1
 				
 				replace ilo_job1_ife_prod=1 if (ilo_job1_ife_prod!=2 & ilo_job1_ife_prod!=3 & ilo_lfs==1) 
 
@@ -666,6 +659,7 @@ cd "$inpath"
 * 1) Weekly hours ACTUALLY worked
 		
 			gen ilo_job1_how_actual=e8c if (ilo_lfs==1)
+				replace ilo_job1_how_actual=0 if (e8c==. & ilo_lfs==1)
 					lab var ilo_job1_how_actual "Weekly hours actually worked in main job"
 
 
@@ -690,6 +684,7 @@ cd "$inpath"
 * 1) Weekly hours ACTUALLY worked:
 
 		gen ilo_job2_how_actual=es5b if (ilo_mjh==2 & ilo_lfs==1)
+			replace ilo_job2_how_actual=0 if (es5b==. & ilo_mjh==2 & ilo_lfs==1)
 					lab var ilo_job2_how_actual "Weekly hours actually worked in second job"
 					
 		
@@ -812,6 +807,7 @@ cd "$inpath"
 				replace ilo_dur_details=5 if (inrange(c1mm,1,6) & c1aa==2015 & ilo_lfs==2) | (inrange(c1mm,7,12) & c1aa==2014 & ilo_lfs==2)
 				replace ilo_dur_details=6 if (inrange(c1mm,1,6) & c1aa==2014 & ilo_lfs==2) | (inrange(c1aa,1979,2013) & ilo_lfs==2)
 				replace ilo_dur_details=7 if (c1aa==9998 & ilo_lfs==2)
+				replace ilo_dur_details=7 if (ilo_dur_details==. & ilo_lfs==2)
 					lab def ilo_unemp_det 1 "Less than 1 month" 2 "1 month to less than 3 months" 3 "3 months to less than 6 months" ///
 											4 "6 months to less than 12 months" 5 "12 months to less than 24 months" 6 "24 months or more" ///
 											7 "Not elsewhere classified"

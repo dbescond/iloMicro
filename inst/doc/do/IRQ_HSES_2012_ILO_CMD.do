@@ -21,7 +21,7 @@ set more off
 
 global path "J:\DPAU\MICRO"
 global country "IRQ" 
-global source "SES"  
+global source "HSES"  
 global time "2012"  
 global inputFile "2012ihses00_01_02_05_06p1_08_13_14.dta" 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
@@ -246,6 +246,38 @@ cd "$inpath"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: - no info on union/cohabitation
+*          - marital status question is made to people 12 years of age or above, therefore all missing observations correspond to people aged below 12 years.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if q0106==2                                  // Single
+		replace ilo_mrts_details=2 if q0106==1                                  // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if q0106==5                                  // Widowed
+		replace ilo_mrts_details=5 if inlist(q0106,3,4)                         // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+				
+				
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')                              *

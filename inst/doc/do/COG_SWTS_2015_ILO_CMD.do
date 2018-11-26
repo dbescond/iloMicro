@@ -23,7 +23,7 @@ global path "J:\DPAU\MICRO"
 global country "COG" /*ref_area: ISO 3 Code from the workflow*/
 global source "SWTS"  /*survey: Acronym from the workflow*/
 global time "2015"  /*time*/
-global inputFile "BRA_SWTS_2012.dta" /*name of the input file in stata format*/
+global inputFile "COG_SWTS_2015.dta" /*name of the input file in stata format*/
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
@@ -70,7 +70,7 @@ cd "$inpath"
 * Comment: 
 
 	gen ilo_wgt=.
-	    replace ilo_wgt= 
+	    replace ilo_wgt= wgt
 		lab var ilo_wgt "Sample weight"
 	
 * ------------------------------------------------------------------------------
@@ -101,8 +101,8 @@ cd "$inpath"
 * Comment: 
 	
 	gen ilo_geo=.
-	    replace ilo_geo=1 if          // Urban 
-		replace ilo_geo=2 if          // Rural
+	    replace ilo_geo=1 if  rururb==1        // Urban 
+		replace ilo_geo=2 if  rururb==2		   // Rural
 		        lab def ilo_geo_lab 1 "1 - Urban" 2 "2 - Rural"
 		        lab val ilo_geo ilo_geo_lab
 		        lab var ilo_geo "Geographical coverage"	
@@ -115,8 +115,8 @@ cd "$inpath"
 * Comment: 
 	
 	gen ilo_sex=.
-	    replace ilo_sex=1 if             // Male
-		replace ilo_sex=2 if             // Female
+	    replace ilo_sex=1 if sex==1            // Male
+		replace ilo_sex=2 if sex==2            // Female
 		        label define label_Sex 1 "1 - Male" 2 "2 - Female"
 		        label values ilo_sex label_Sex
 		        lab var ilo_sex "Sex"

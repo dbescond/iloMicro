@@ -4,7 +4,7 @@
 * Files created: Standard variables COU_SUR_TIM_FULL.dta and COU_SUR_TIME_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 29 May 2018
-* Last updated: 29 May 2018
+* Last updated: 30 May 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -176,39 +176,9 @@ cd "$inpath"
 *			           Level of education ('ilo_edu') 		                   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:
+* Comment: - Category "7 - Master's or equivalent level" includes category "8 - 
+*            Doctoral or equivalent level". [C3:4158].
 
-    *---------------------------------------------------------------------------
-	* ISCED 97
-	*---------------------------------------------------------------------------
-	
-	* Detailed
-	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if                        // No schooling
-		replace ilo_edu_isced97=2 if                        // Pre-primary education
-		replace ilo_edu_isced97=3 if                        // Primary education or first stage of basic education
-		replace ilo_edu_isced97=4 if                        // Lower secondary education or second stage of basic education
-		replace ilo_edu_isced97=5 if                        // Upper secondary education
-		replace ilo_edu_isced97=6 if                        // Post-secondary non-tertiary education
-		replace ilo_edu_isced97=7 if                        // First stage of tertiary education (not leading directly to an advanced research qualification)
-		replace ilo_edu_isced97=8 if                        // Second stage of tertiary education (leading to an advanced research qualification)                               
-		replace ilo_edu_isced97=9 if ilo_edu_isced97==.     // Level not stated 
-			    label def isced_97_lab 1 "X - No schooling" 2 "0 - Pre-primary education" 3 "1 - Primary education or first stage of basic education" 4 "2 - Lower secondary education or second stage of basic education" ///
-							           5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - First stage of tertiary education (not leading directly to an advanced research qualification)" ///
-							           8 "6 - Second stage of tertiary education (leading to an advanced research qualification)" 9 "UNK - Level not stated"
-			    label val ilo_edu_isced97 isced_97_lab
-		        lab var ilo_edu_isced97 "Level of education (ISCED 97)"
-
-	* Aggregate
-	gen ilo_edu_aggregate=.
-		replace ilo_edu_aggregate=1 if inlist(ilo_edu_isced97,1,2)
-		replace ilo_edu_aggregate=2 if inlist(ilo_edu_isced97,3,4)
-		replace ilo_edu_aggregate=3 if inlist(ilo_edu_isced97,5,6)
-		replace ilo_edu_aggregate=4 if inlist(ilo_edu_isced97,7,8)
-		replace ilo_edu_aggregate=5 if ilo_edu_isced97==9
-			    label def edu_aggr_lab 1 "1 - Less than basic" 2 "2 - Basic" 3 "3 - Intermediate" 4 "4 - Advanced" 5 "5 - Level not stated"
-			    label val ilo_edu_aggregate edu_aggr_lab
-			    label var ilo_edu_aggregate "Level of education (Aggregate levels)"
 				
     *---------------------------------------------------------------------------
 	* ISCED 11
@@ -216,17 +186,17 @@ cd "$inpath"
 				
     * Detailed				
     gen ilo_edu_isced11=.
-		replace ilo_edu_isced11=1 if                        // No schooling
-		replace ilo_edu_isced11=2 if                        // Early childhood education
-		replace ilo_edu_isced11=3 if                        // Primary education
-		replace ilo_edu_isced11=4 if                        // Lower secondary education
-		replace ilo_edu_isced11=5 if                        // Upper secondary education
-		replace ilo_edu_isced11=6 if                        // Post-secondary non-tertiary education
-		replace ilo_edu_isced11=7 if                        // Short-cycle tertiary education
-		replace ilo_edu_isced11=8 if                        // Bachelor's or equivalent level
-		replace ilo_edu_isced11=9 if                        // Master's or equivalent level
-		replace ilo_edu_isced11=10 if                       // Doctoral or equivalent level
-		replace ilo_edu_isced11=11 if ilo_edu_isced11==.    // Not elsewhere classified
+		replace ilo_edu_isced11=1 if pp25a=="01"                                               // No schooling
+		replace ilo_edu_isced11=2 if pp25a=="02"                                               // Early childhood education
+		replace ilo_edu_isced11=3 if pp25a=="03"                                               // Primary education
+		replace ilo_edu_isced11=4 if pp25a=="04" & inlist(pp25b,"-1","-3","01","02","03")      // Lower secondary education
+		replace ilo_edu_isced11=5 if pp25a=="04" & inlist(pp25b,"04","05","06")                // Upper secondary education
+		* replace ilo_edu_isced11=6 if                                                         // Post-secondary non-tertiary education
+		replace ilo_edu_isced11=7 if pp25a=="05"                                               // Short-cycle tertiary education
+		replace ilo_edu_isced11=8 if pp25a=="06"                                               // Bachelor's or equivalent level
+		replace ilo_edu_isced11=9 if pp25a=="07"                                               // Master's or equivalent level
+		* replace ilo_edu_isced11=10 if                                                        // Doctoral or equivalent level
+		replace ilo_edu_isced11=11 if ilo_edu_isced11==.                                       // Not elsewhere classified
 			    label def isced_11_lab 1 "X - No schooling" 2 "0 - Early childhood education" 3 "1 - Primary education" 4 "2 - Lower secondary education" ///
 				                       5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - Short-cycle tertiary education" 8 "6 - Bachelor's or equivalent level" ///
 									   9 "7 - Master's or equivalent level" 10 "8 - Doctoral or equivalent level" 11 "9 - Not elsewhere classified"
@@ -249,12 +219,14 @@ cd "$inpath"
 *		  	 Educational attendance ('ilo_edu_attendance') 		               *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
+* Comment:
+
+    destring pp27, replace 
 			
     gen ilo_edu_attendance=.
-		replace ilo_edu_attendance=1 if                        // Attending
-		replace ilo_edu_attendance=2 if                        // Not attending
-		replace ilo_edu_attendance=3 if ilo_edu_attendance==.  // Not elsewhere classified
+		replace ilo_edu_attendance=1 if pp27==1                                 // Attending
+		replace ilo_edu_attendance=2 if pp27==2                                 // Not attending
+		replace ilo_edu_attendance=3 if ilo_edu_attendance==.                   // Not elsewhere classified
 			    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
@@ -268,11 +240,11 @@ cd "$inpath"
 	
 	* Detailed
 	gen ilo_mrts_details=.
-	    replace ilo_mrts_details=1 if                                           // Single
-		replace ilo_mrts_details=2 if                                           // Married
-		replace ilo_mrts_details=3 if                                           // Union / cohabiting
-		replace ilo_mrts_details=4 if                                           // Widowed
-		replace ilo_mrts_details=5 if                                           // Divorced / separated
+	    replace ilo_mrts_details=1 if pp21=="07"                                // Single
+		replace ilo_mrts_details=2 if inlist(pp21,"01","02")                    // Married
+		replace ilo_mrts_details=3 if inlist(pp21,"03","04")                    // Union / cohabiting
+		replace ilo_mrts_details=4 if pp21=="06"                                // Widowed
+		replace ilo_mrts_details=5 if pp21=="05"                                // Divorced / separated
 		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
 		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
 				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
@@ -293,25 +265,7 @@ cd "$inpath"
 *			Disability status ('ilo_dsb_details')                              *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
-
-    * Detailed
-	gen ilo_dsb_details=.
-	    replace ilo_dsb_details=1 if                        // No, no difficulty
-		replace ilo_dsb_details=2 if      	                // Yes, some difficulty
-		replace ilo_dsb_details=3 if     	                // Yes, a lot of difficulty
-		replace ilo_dsb_details=4 if   		                // Cannot do it at all
-				label def dsb_det_lab 1 "1 - No, no difficulty" 2 "2 - Yes, some difficulty" 3 "3 - Yes, a lot of difficulty" 4 "4 - Cannot do it at all"
-				label val ilo_dsb_details dsb_det_lab
-				label var ilo_dsb_details "Disability status (Details)"
-
-    * Aggregate  	
-	gen ilo_dsb_aggregate=.
-	    replace ilo_dsb_aggregate=1 if                      // Persons without disability
-		replace ilo_dsb_aggregate=2 if 	                    // Persons with disability
-				label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
-				label val ilo_dsb_aggregate dsb_lab
-				label var ilo_dsb_aggregate "Disability status (Aggregate)"
+* Comment: - No information available.
 				
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -326,10 +280,12 @@ cd "$inpath"
 *			      Working age population ('ilo_wap')	                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 	
+* Comment: 	- It differs from the national reported number due to the age coverage
+*             (the national minimum age is set at 10 years old whereas here it is
+*             set at 15 years old). 
 
 	gen ilo_wap=.
-		replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
+		replace ilo_wap=1 if ilo_age>=10 & ilo_age!=.
 			    label var ilo_wap "Working age population"
 		
 * ------------------------------------------------------------------------------
@@ -337,18 +293,24 @@ cd "$inpath"
 *			       Labour Force Status ('ilo_lfs')                             *       
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: 
+* Comment: - Employment comprises those who answered yes to working for pay/profit
+*            (in cash or in kind) during the reference week, as a support/auxiliar
+*            worker and those who are temporary absent
+*            
+*                        
+*- to check: Unemployment  [T5:1429]
 	
 	gen ilo_lfs=.
-        replace ilo_lfs=1 if () & ilo_wap==1						// Employed: ILO definition
-		replace ilo_lfs=1 if () & ilo_wap==1						// Employed: temporary absent
-		replace ilo_lfs=2 if () & ilo_lfs!=1 & ilo_wap==1			// Unemployed: three criteria
-		replace ilo_lfs=2 if () & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
-	    replace ilo_lfs=3 if !inlist(ilo_lfs,1,2) & ilo_wap==1		// Outside the labour force
+        replace ilo_lfs=1 if (inlist(pp29,"01","02") | pp30=="01") & ilo_wap==1			// Employed: ILO definition
+		replace ilo_lfs=1 if (pp29=="03" & inlist(pp32,"01","02")) & ilo_wap==1                     // Employed: temporary absent
+		replace ilo_lfs=1 if (pp31=="01" & pp32=="01") & ilo_wap==1                     // Employed: temporary absent
+		replace ilo_lfs=2 if (pp39=="01") & ilo_lfs!=1 & ilo_wap==1			            // Unemployed: two criteria
+		replace ilo_lfs=2 if (pp43=="05") & ilo_lfs!=1 & ilo_wap==1			            // Unemployed: available future starters
+	    replace ilo_lfs=3 if !inlist(ilo_lfs,1,2) & ilo_wap==1		                    // Outside the labour force
 				label define label_ilo_lfs 1 "1 - Employed" 2 "2 - Unemployed" 3 "3 - Outside Labour Force"
 				label value ilo_lfs label_ilo_lfs
 				label var ilo_lfs "Labour Force Status" 
-			
+				
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			       Multiple job holders ('ilo_mjh')                            *

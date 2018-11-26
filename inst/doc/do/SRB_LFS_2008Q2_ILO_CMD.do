@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Serbia, 2008Q2
 * DATASET USED: Serbia, LFS, 2008Q2
 * NOTES: 
-* Files created: Standard variables SRB_LFS_2010_FULL.dta and SRB_LFS_2010_ILO.dta
+* Files created: Standard variables SRB_LFS_2008_FULL.dta and SRB_LFS_2008_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date:18 April 2018
-* Last updated: 18 April 2018
+* Last updated: 22 June 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -283,6 +283,36 @@ gen ilo_age=.
 			   lab val ilo_edu_attendance edu_attendance_lab
 			   lab var ilo_edu_attendance "Education (Attendance)"
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: There is no info on union/cohabiting
+*          There is no info on sepatared, only about divorced.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if marstat==1                                 // Single
+		replace ilo_mrts_details=2 if marstat==2                                 // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if marstat==3                                 // Widowed
+		replace ilo_mrts_details=5 if marstat==4                                 // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
+				
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')                              *

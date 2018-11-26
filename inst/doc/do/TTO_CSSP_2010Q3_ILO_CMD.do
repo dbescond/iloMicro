@@ -1,10 +1,10 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Palestine
-* DATASET USED: Trinidad & Tobago LFS
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Trinidad & Tobago  
+* DATASET USED: Trinidad & Tobago CSSP
 * NOTES: 
-* Files created: Standard variables on LFS Palestine
+* Files created: Standard variables on Trinidad & Tobago
 * Authors: DPAU 
 * Starting Date: 08 February 2018
-* Last updated:  20 February 2018
+* Last updated:  21 February 2018
 ***********************************************************************************************
 
 
@@ -16,18 +16,17 @@ clear all
 
 set more off
 
-
  
-
 global path "J:\DPAU\MICRO"
 global country "TTO"
 global source "CSSP"
 global time "2010Q3"
-global input_file "Private Persons Data (10)SRequest.dta"
+global inputFile "Private Persons Data (10)SRequest.dta"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
+ 
  
 
 
@@ -52,7 +51,7 @@ cd "$temppath"
 
 cd "$inpath"
 
-	use "${input_file}", clear	
+	use "${inputFile}", clear	
 	
 	rename *, lower
 		
@@ -110,11 +109,24 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
- gen ilo_wgt=raisefac/100
-
-    lab var ilo_wgt "Sample weight"	
-
  
+* Comment: weights are different depending on whether we take quarterly or annual data
+
+	
+if substr(todrop,5,1)=="Q" {
+	
+	gen ilo_wgt=raisefac/100
+		
+		}
+		
+	else {	
+
+	gen ilo_wgt=raisefac/400
+		
+			}
+	
+		
+		lab var ilo_wgt "Sample weight"	
  
  
  
@@ -226,6 +238,38 @@ cd "$inpath"
  
  ** No information
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: variable p12
+*          there is not enough information to make a distintion between widowed and divorced, since the only information
+*          related to this is in the category  "Had a partner but now living alone", without more information on the dissolution.
+*          "Married but living alone" has been considered as separated.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p12==1                                          // Single
+		replace ilo_mrts_details=2 if p12==4                                          // Married
+		replace ilo_mrts_details=3 if p12==5                                          // Union / cohabiting
+		*replace ilo_mrts_details=4 if                                                // Widowed
+		replace ilo_mrts_details=5 if inlist(p12,2,3)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                 // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+ 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') [no info]
@@ -339,6 +383,11 @@ cd "$inpath"
 *			Economic activity ('ilo_eco')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
+
+*** Comment: variables related to economic activity and occupation are not computed for 2010 because the inconsistency in the data in 2010Q4
+
+
+if todrop != "2010" {
 
  ** Comment: they follow a national classification which follows ISIC Rev.2.
 			*** However the information in the variable given at 1-digit level only allows to compute the aggregate ILO variable. 
@@ -465,6 +514,8 @@ cd "$inpath"
 			
 			
 			
+}			
+			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Institutional sector of economic activities ('ilo_ins_sector')  
@@ -477,6 +528,7 @@ cd "$inpath"
 		replace ilo_job1_ins_sector=1 if inrange(p28,0,2)
 		replace ilo_job1_ins_sector=2 if ilo_job1_ins_sector!=1 & ilo_lfs==1
 		replace ilo_job1_ins_sector=. if ilo_lfs!=1
+		
 			lab def ins_sector_lab 1 "1 - Public" 2 "2 - Private"
 			lab values ilo_job1_ins_sector ins_sector_lab
 			lab var ilo_job1_ins_sector "Institutional sector (private/public) of economic activities"	
@@ -507,6 +559,7 @@ cd "$inpath"
 			 replace ilo_job1_how_actual_bands = 7 if inrange(p34,8,10) // 49+
 			 replace ilo_job1_how_actual_bands= 8 if ilo_job1_how_actual_bands == .		// Not elsewhere classified
  			 replace ilo_job1_how_actual_bands = . if ilo_lfs!=1
+			 
 				     lab def how_bands_lab 1 "No hours actually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 8 "Not elsewhere classified"
 					 lab val ilo_job1_how_actual_bands how_bands_lab
 					 lab var ilo_job1_how_actual_bands "Weekly hours actually worked bands in main job"
@@ -523,6 +576,7 @@ cd "$inpath"
 			 replace ilo_job2_how_actual_bands = 7 if inrange(p38,8,10) // 49+
 			 replace ilo_job2_how_actual_bands = 8 if ilo_job2_how_actual_bands == . & ilo_mjh==2	// Not elsewhere classified
 			 replace ilo_job2_how_actual_bands = . if ilo_mjh!=2
+			 
                      *lab def how_actual_bands_lab 1 "No hours actually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 8 "Not elsewhere classified"
 					 lab val ilo_job2_how_actual_bands how_bands_lab
 					 lab var ilo_job2_how_actual_bands "Weekly hours actually worked bands in second job"
@@ -536,6 +590,7 @@ cd "$inpath"
 				replace ilo_joball_how_actual_bands = 7 if ilo_joball_how_actual_bands>=8 & ilo_job1_how_actual_bands!=8 & ilo_job2_how_actual_bands!=8
 				replace ilo_joball_how_actual_bands = 8 if ilo_joball_how_actual_bands == . & ilo_lfs==1	// Not elsewhere classified
 				replace ilo_joball_how_actual_bands=. if ilo_lfs!=1
+				
 					lab val ilo_joball_how_actual_bands how_bands_lab
 					lab var ilo_joball_how_actual_bands "Weekly hours actually worked in all jobs"	
 
@@ -757,11 +812,16 @@ cd "$inpath"
 			lab val ilo_cat_une cat_une_lab
 			lab var ilo_cat_une "Category of unemployment"
 	
+	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Previous economic activity ('ilo_preveco_isic')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
+
+*** Comment: variables related to economic activity and occupation are not computed for 2010 because the inconsistency in the data in 2010Q4
+
+if todrop != "2010" {
 		
 	* Aggregate level
 		
@@ -820,7 +880,7 @@ cd "$inpath"
 			    lab val ilo_prevocu_skill ocu_skill_lab
 			    lab var ilo_prevocu_skill "Previous occupation occupation (Skill level)"
 				
-
+}
 
 ***********************************************************************************************
 *			PART 3.4. OUTSIDE LABOUR FORCE: ECONOMIC CHARACTERISTICS

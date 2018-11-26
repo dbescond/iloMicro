@@ -1,10 +1,10 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Palestine
-* DATASET USED: Trinidad & Tobago LFS
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Trinidad & Tobago  
+* DATASET USED: Trinidad & Tobago CSSP
 * NOTES: 
-* Files created: Standard variables on LFS Palestine
+* Files created: Standard variables on Trinidad & Tobago
 * Authors: DPAU 
 * Starting Date: 08 February 2018
-* Last updated:  13 February 2018
+* Last updated:  20 February 2018
 ***********************************************************************************************
 
 
@@ -23,7 +23,7 @@ global path "J:\DPAU\MICRO"
 global country "TTO"
 global source "CSSP"
 global time "2010Q4"
-global input_file "Private Persons Data (10)SRequest.dta"
+global inputFile "Private Persons Data (10)SRequest.dta"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
@@ -52,7 +52,7 @@ cd "$temppath"
 
 cd "$inpath"
 
-	use "${input_file}", clear	
+	use "${inputFile}", clear	
 	
 	rename *, lower
 		
@@ -110,21 +110,9 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-* Comment: weights are different depending on whether we take quarterly or annual data
 
-	
-if substr(todrop,5,1)=="Q" {
 	
 	gen ilo_wgt=raisefac/100
-		
-		}
-		
-	else {	
-
-	gen ilo_wgt=raisefac/400
-		
-			}
-	
 		
 		lab var ilo_wgt "Sample weight"	
  
@@ -237,6 +225,39 @@ if substr(todrop,5,1)=="Q" {
  
  ** No information
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: variable p12
+*          there is not enough information to make a distintion between widowed and divorced, since the only information
+*          related to this is in the category  "Had a partner but now living alone", without more information on the dissolution.
+*          "Married but living alone" has been considered as separated.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p12==1                                          // Single
+		replace ilo_mrts_details=2 if p12==4                                          // Married
+		replace ilo_mrts_details=3 if p12==5                                          // Union / cohabiting
+		*replace ilo_mrts_details=4 if                                                // Widowed
+		replace ilo_mrts_details=5 if inlist(p12,2,3)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                 // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details') [no info]
@@ -350,7 +371,14 @@ if substr(todrop,5,1)=="Q" {
 *			Economic activity ('ilo_eco')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
+/*
 
+COMMENT: This variable cannot be computed because the information given by the variable ‘rindus’ in this quarter
+         was not properly collected because most of the observations were classified as ‘Not stated.’  
+		 
+		 
+		 
+		 
  ** Comment: they follow a national classification which follows ISIC Rev.2.
 			*** However the information in the variable given at 1-digit level only allows to compute the aggregate ILO variable. 
 
@@ -359,31 +387,27 @@ if substr(todrop,5,1)=="Q" {
 	
 		* Primary activity
 		
-		gen ilo_job1_eco_aggregate=.
-			replace ilo_job1_eco_aggregate=1 if inlist(rindus,1,2) & ilo_lfs==1 //1 - Agriculture
-			replace ilo_job1_eco_aggregate=2 if rindus==5 & ilo_lfs==1 //2- Manufacturing
-			replace ilo_job1_eco_aggregate=3 if rindus==7  & ilo_lfs==1 //3 - Construction
-			replace ilo_job1_eco_aggregate=4 if (inlist(rindus,3,4) | rindus==6)  & ilo_lfs==1 //4 - Mining and quarrying; Electricity, gas and water supply
-			replace ilo_job1_eco_aggregate=5 if inrange(rindus,8,10) & ilo_lfs==1 // 5 - Market Services
-			replace ilo_job1_eco_aggregate=6 if rindus==11 & ilo_lfs==1 // 6 - Non-market services 
-			replace ilo_job1_eco_aggregate=7 if inlist(rindus,88,99) & ilo_lfs==1 // 7 - Not classifiable by economic activity
-			    lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
-			    lab val ilo_job1_eco_aggregate eco_aggr_lab
-			    lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
+		*gen ilo_job1_eco_aggregate=.
 
-				
+
+		
+		
 		* Secondary activity
 			*** Not possible to compute
 
-
+*/
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Occupation ('ilo_ocu')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
+/*
+
+COMMENT: This variable cannot be computed because the information given by the variable 'roccup1'  in this quarter
+         was not properly collected because most of the observations were classified as ‘Not stated.’  
+
+
 
 ** Comment:  ISCO-88 classification used
 
@@ -474,7 +498,7 @@ if substr(todrop,5,1)=="Q" {
 					lab val ilo_job2_ocu_skill ocu_skill_lab
 					lab var ilo_job2_ocu_skill "Occupation (Skill level) - second job"
 			
-			
+*/			
 			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -773,7 +797,12 @@ if substr(todrop,5,1)=="Q" {
 *			Previous economic activity ('ilo_preveco_isic')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-		
+
+/*		
+COMMENT: This variable cannot be computed because the information given by the variable 'rindus'  in this quarter
+         was not properly collected because most of the observations were classified as ‘Not stated.’  
+
+
 	* Aggregate level
 		
 		gen ilo_preveco_aggregate=.
@@ -787,14 +816,19 @@ if substr(todrop,5,1)=="Q" {
 			    
 				lab val ilo_preveco_aggregate eco_aggr_lab
 			    lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
-				
+	*/			
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Previous occupation ('ilo_prevocu_isco88')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-		
+	
+/*	
+COMMENT: This variable cannot be computed because the information given by the variable 'roccup1'  in this quarter
+         was not properly collected because most of the observations were classified as ‘Not stated.’
+		 
+		 
 * Comment: ISCO-88 classification being used
  
  
@@ -830,7 +864,7 @@ if substr(todrop,5,1)=="Q" {
 			replace ilo_prevocu_skill=4 if inlist(ilo_prevocu_isco88,10,11)        // Not elsewhere classified
 			    lab val ilo_prevocu_skill ocu_skill_lab
 			    lab var ilo_prevocu_skill "Previous occupation occupation (Skill level)"
-				
+*/				
 
 
 ***********************************************************************************************

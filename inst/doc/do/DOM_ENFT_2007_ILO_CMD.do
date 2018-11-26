@@ -2,10 +2,10 @@
 * DATASET USED: Dominican Republic LFS ENFT
 * NOTES: 
 * Files created: Standard variables on ENFT Dominican Republic
-* Authors: Mabelin Villarreal Fuentes
-* Who last updated the file: Mabelin Villarreal Fuentes
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 22 September 2016
-* Last updated: 19 October 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "DOM"
 global source "ENFT"
 global time "2007"
@@ -216,7 +216,7 @@ if (`Y'<=2012){
 *			Age ('ilo_age') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - Age above 99 not indicated, highest value corresponds to "99 y más (99 and more)"
+* Comment: - Age above 99 not indicated, highest value corresponds to "99 y mÃƒ¡s (99 and more)"
 
 	gen ilo_age=.
 	if (`Y'>=2013){

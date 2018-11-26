@@ -309,8 +309,14 @@ destring v8005, replace
 			    label def edu_aggr_lab 1 "1 - Less than basic" 2 "2 - Basic" 3 "3 - Intermediate" 4 "4 - Advanced" 5 "5 - Level not stated"
 			    label val ilo_edu_aggregate edu_aggr_lab
 			    label var ilo_edu_aggregate "Level of education (Aggregate levels)"
-
 				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+				
+** Comment: there is no information to compute this variable. 				
 				
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -863,22 +869,15 @@ destring v9105, replace
 *  Informal/formal economy: ('ilo_job1_ife_prod'/'ilo_job1_ife_nature') 	   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: Revise
-if `Y' > 2008 {
-
-destring v9059, replace
-destring v90531, replace
-destring v9054, replace
-
-
+* Comment: no possible to compute
 
 /* Useful questions:
           - Institutional sector: v9032
 		  - Private household identification: 
 		  - Destination of production: no info.- the period of time referred to in the question related to "produces for sale" (v9025) is not the reference week
 		  - Bookkeeping: no info
-		  - Registration: v90531 (no info before 2009)
-		  - Status in employment: v9008
+		  - Registration: v90531 (no info before 2009 - therefore, it is not possible to compute informality)
+		  - Status in employment: v9008, v9029
 		  - Social security contribution (Proxy: pension funds): v9059
 		  - Place of work: v9054 
 		  - Size:
@@ -886,10 +885,14 @@ destring v9054, replace
 		  - Paid sick leave:
 */
     * Social Security:
+ 
+ destring v9059, replace
+ 
 	gen social_security=.
 	    replace social_security=1 if v9059==1  &  ilo_lfs==1          // social security (proxy)
 		replace social_security=2 if v9059==3  &  ilo_lfs==1          // no social security (proxy)
-	
+
+ /*	
     * 1) UNIT OF PRODUCTION: FORMAL/INFORMAL SECTOR
 			gen ilo_job1_ife_prod=.
  			   
@@ -916,7 +919,7 @@ destring v9054, replace
 		        lab val ilo_job1_ife_nature ife_nature_lab
 		        lab var ilo_job1_ife_nature "Informal / Formal Economy (Nature of job)"	
  
- }
+ */
  
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------

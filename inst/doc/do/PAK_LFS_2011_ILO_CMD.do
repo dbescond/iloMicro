@@ -2,9 +2,9 @@
 * DATASET USED: PAK LFS 2014
 * NOTES:
 * Author: Roger Gomis
-* Who last updated the file: Roger Gomis
+
 * Starting Date: 27 February 2017
-* Last updated: 16 March 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,7 +20,7 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "PAK"
 global source "LFS"
 global time "2011"
@@ -30,63 +30,14 @@ global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-* note to work it requires to run (on a one time basis):
-
-/*
-set httpproxyhost proxy.ilo.org
-set httpproxyport 3128
-set httpproxy on
-
-ssc install labutil
-	*/
-cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				
-				drop code_label* code_level
-			
-			save "`labels'"
-
-
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
-* 			Load original dataset
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use ${inputFile}, clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	*rename *, lower  
+		
 		
 * to remove added observations
 gen original=1
@@ -98,15 +49,53 @@ gen original=1
 ***********************************************************************************************
 ***********************************************************************************************
 
+
 * ---------------------------------------------------------------------------------------------
 ***********************************************************************************************
 *			PART 0.5 COMPATIBILITY - notice that still the body of the do file has to be altered!
 ***********************************************************************************************
 * ---------------------------------------------------------------------------------------------
+if ${time} <= 2007 {
+
+capture drop New_Stat NEW_STAT
+capture drop Vulnerab vulnerab
+capture drop Newempst newempst
 
 
+rename *S4* *sec_4*
+rename *S5* *sec_5*
+rename *S6* *sec_6*
+rename *S7* *sec_7*
+rename *S8* *sec_8*
+rename *S9* *todrop*
+rename *S10* *sec_9*
+
+
+rename *, lower
+rename weight weights
+
+
+gen sec_5_171_artificial = sec_5_25_1
+gen sec_7_6_artificial = sec_7_5
+rename sec_5_18 place_holder_sec_5_18
+gen sec_5_18_artificial= sec_5_17
+
+}
+
+if ${time} <= 2009 & ${time}>2007 {
+***** Changes 2009>= YEAR
 **original (old_name -> new_name)
+capture drop New_Stat NEW_STAT
+capture drop Vulnerab vulnerab
 
+rename *, lower
+
+
+
+gen sec_5_171_artificial=sec_5_17
+
+}
+***** Changes 2009 < YEAR
 * these ones would conflict, so a change is made and the name used in the body of the do file is updated
 gen new_sec_9_1 =sec_9_3
 gen new_sec_9_4 =sec_9_1
@@ -118,8 +107,14 @@ gen new_sec_9_7 =sec_9_6
 
 
 *individual
-rename sec_7_4 sec_7_4_3
-rename sec_7_3 sec_7_3_3
+capture rename sec_7_4 sec_7_4_3
+capture rename sec_7_3 sec_7_3_3
+if ${time} <= 2007 {
+rename sec_7_4_3 sec_7_5_3_artificial
+rename sec_7_3_3 sec_7_4_3_artificial
+rename sec_7_2 sec_7_3_3_artificial
+
+}
 
 * individual with a pattern to remove
 
@@ -177,6 +172,7 @@ replace sec_5_11 = -2000 if sec_5_11==6
 replace sec_5_11 = 5 if sec_5_11==-2000
 replace sec_5_11 = 6 if sec_5_11==-1000
 
+
 * ---------------------------------------------------------------------------------------------
 ***********************************************************************************************
 *			PART 1. DATASET SETTINGS VARIABLES
@@ -215,47 +211,70 @@ replace sec_5_11 = 6 if sec_5_11==-1000
    decode ilo_time, gen(to_drop)
    split to_drop, generate(to_drop_) parse(Q)
    destring to_drop_1, replace force
-
+   local Y = to_drop_1 in 1
 
    capture destring to_drop_2, replace force
    capture gen to_drop_2=-9999
    local Q = to_drop_2 in 1
-   
+  
 
 *-- annual
 
-	gen ilo_wgt=weights * 186.19 / 163.532738  if to_drop_2==-9999
+	gen ilo_wgt=weights   if to_drop_2==-9999
 		lab var ilo_wgt "Sample weight"		
 
 *-- quarter_1                
     if `Q' == 1 {
-	    replace ilo_wgt = weights * 186.19 / 163.532738 *4
+	    replace ilo_wgt = weights  *4
 		lab var ilo_wgt "Sample weight"	
 		keep if inlist(survey_period,1)
 }
 
 *-- quarter_2                
     if `Q' == 2 {
-	    replace ilo_wgt = weights * 186.19 / 163.532738 *4
+	    replace ilo_wgt = weights  *4
 		lab var ilo_wgt "Sample weight"	
 		keep if inlist(survey_period,2)
 }
 
 *-- quarter_3                
     if `Q' == 3 {
-	    replace ilo_wgt = weights * 186.19 / 163.532738 *4
+	    replace ilo_wgt = weights  *4
 		lab var ilo_wgt "Sample weight"	
 		keep if inlist(survey_period,3)
 }
 
 *-- quarter_4                
     if `Q' == 4 {
-	    replace ilo_wgt = weights * 186.19 / 163.532738 *4
+	    replace ilo_wgt = weights  *4
 		lab var ilo_wgt "Sample weight"	
 		keep if inlist(survey_period,4)
 }
 
+if  `Y'==2011 {
+	replace ilo_wgt = ilo_wgt * 1.26907734940209
 
+}
+if  `Y'==2010 {
+	replace ilo_wgt = ilo_wgt * 1.23091391359018
+
+}
+if  `Y'==2009 {
+	replace ilo_wgt = ilo_wgt * 1.21983697760748
+
+}
+if  `Y'==2008 {
+	replace ilo_wgt = ilo_wgt * 1.20351629524952
+
+}
+if  `Y'==2007 {
+	replace ilo_wgt = ilo_wgt * 1.19912293372382
+
+}
+if  `Y'==2006 {
+	replace ilo_wgt = ilo_wgt * 1.18849461028748
+	
+}
 * ---------------------------------------------------------------------------------------------
 ***********************************************************************************************
 *			PART 2. SOCIAL CHARACTERISTICS
@@ -350,11 +369,11 @@ replace sec_5_11 = 6 if sec_5_11==-1000
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-/* ISCED 2011 mapping	file:///J:\COMMON\STATISTICS\DPAU\MICRO\PAK\LFS\2014\ORI\ISCED_2011_Mapping_EN_Pakistan.xlsx/ */
+/* ISCED 2011 mapping	file:///J:\DPAU\MICRO\PAK\LFS\2014\ORI\ISCED_2011_Mapping_EN_Pakistan.xlsx/ */
 *note that post secondary level non tertirary is empty
 *also note that for 2013 PhD is empty due to MPhil-PhD being bunched together
 
-	recode sec_4_9 (1=1) (2/3=2) (4=3) (5=4) (6/7=5) (8/12=7) (13/14=9) (15=10) (16 . 0 61 34=11), gen(ilo_edu_isced11)
+	recode sec_4_9 (1=1) (2/3=2) (4=3) (5=4) (6/7=5) (8/12=7) (13/14=9) (15=10) (16 . 0 61 34 92=11), gen(ilo_edu_isced11)
 			label def isced_11_lab 1 "X - No schooling" 2 "0 - Early childhood education" 3 "1 - Primary education" 4 "2 - Lower secondary education" ///
 							5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - Short-cycle tertiary education" ///
 							8 "6 - Bachelor's or equivalent level" 9 "7 - Master's or equivalent level" 10 "8 - Doctoral or equivalent level" 11 "9 - Not elsewhere classified"
@@ -383,12 +402,43 @@ replace sec_5_11 = 6 if sec_5_11==-1000
 	gen ilo_edu_attendance=.
 		replace ilo_edu_attendance=1 if inlist(sec_4_10,2,15)			// Attending
 		replace ilo_edu_attendance=2 if sec_4_10==1				// Not attending
-			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending"
+		replace ilo_edu_attendance=3 if ilo_edu_attendance==.
+			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Unkown"
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
 
 			
-
+			
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: There is no information on union/cohabiting or separated.
+*          Question made to people aged 10 years and over.
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if sec_4_7==1                                // Single
+		replace ilo_mrts_details=2 if sec_4_7==2                                // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if sec_4_7==3                                // Widowed
+		replace ilo_mrts_details=5 if sec_4_7==4                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -522,18 +572,32 @@ replace sec_5_11 = 6 if sec_5_11==-1000
 *			Economic activity ('ilo_eco')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* IT DOES FOLLOW ISIC  4
+* Earlier years follow PAK 1970 classification, based on ISIC2
 	
-
-	append using `labels'
-
-		* Use value label from this variable, afterwards drop everything related to this append
-					
+ 
+if ${time} >2008 {
+ 					
 		* Primary activity
 		
 		gen ilo_job1_eco_isic3_2digits=trunc(sec_5_10/100) if (ilo_lfs==1)
-			lab values ilo_job1_eco_isic3_2digits isic3_2digits
-			lab var ilo_job1_eco_isic3_2digits "Economic activity (ISIC Rev. 3.1), 2 digit level"
+			    lab def eco_isic3_2digits 1 "01 - Agriculture, hunting and related service activities"	2 "02 - Forestry, logging and related service activities"	5 "05 - Fishing, operation of fish hatcheries and fish farms; service activities incidental to fishing"	10 "10 - Mining of coal and lignite; extraction of peat"	///
+                                          11 "11 - Extraction of crude petroleum and natural gas; service activities incidental to oil and gas extraction excluding surveying"	12 "12 - Mining of uranium and thorium ores"	13 "13 - Mining of metal ores"	14 "14 - Other mining and quarrying"	///
+                                          15 "15 - Manufacture of food products and beverages"	16 "16 - Manufacture of tobacco products"	17 "17 - Manufacture of textiles"	18 "18 - Manufacture of wearing apparel; dressing and dyeing of fur"	///
+                                          19 "19 - Tanning and dressing of leather; manufacture of luggage, handbags, saddlery, harness and footwear"	20 "20 - Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials"	21 "21 - Manufacture of paper and paper products"	22 "22 - Publishing, printing and reproduction of recorded media"	///
+                                          23 "23 - Manufacture of coke, refined petroleum products and nuclear fuel"	24 "24 - Manufacture of chemicals and chemical products"	25 "25 - Manufacture of rubber and plastics products"	26 "26 - Manufacture of other non-metallic mineral products"	///
+                                          27 "27 - Manufacture of basic metals"	28 "28 - Manufacture of fabricated metal products, except machinery and equipment"	29 "29 - Manufacture of machinery and equipment n.e.c."	30 "30 - Manufacture of office, accounting and computing machinery"	///
+                                          31 "31 - Manufacture of electrical machinery and apparatus n.e.c."	32 "32 - Manufacture of radio, television and communication equipment and apparatus"	33 "33 - Manufacture of medical, precision and optical instruments, watches and clocks"	34 "34 - Manufacture of motor vehicles, trailers and semi-trailers"	///
+                                          35 "35 - Manufacture of other transport equipment"	36 "36 - Manufacture of furniture; manufacturing n.e.c."	37 "37 - Recycling"	40 "40 - Electricity, gas, steam and hot water supply"	///
+                                          41 "41 - Collection, purification and distribution of water"	45 "45 - Construction"	50 "50 - Sale, maintenance and repair of motor vehicles and motorcycles; retail sale of automotive fuel"	51 "51 - Wholesale trade and commission trade, except of motor vehicles and motorcycles"	///
+                                          52 "52 - Retail trade, except of motor vehicles and motorcycles; repair of personal and household goods"	55 "55 - Hotels and restaurants"	60 "60 - Land transport; transport via pipelines"	61 "61 - Water transport"	///
+                                          62 "62 - Air transport"	63 "63 - Supporting and auxiliary transport activities; activities of travel agencies"	64 "64 - Post and telecommunications"	65 "65 - Financial intermediation, except insurance and pension funding"	///
+                                          66 "66 - Insurance and pension funding, except compulsory social security"	67 "67 - Activities auxiliary to financial intermediation"	70 "70 - Real estate activities"	71 "71 - Renting of machinery and equipment without operator and of personal and household goods"	///
+                                          72 "72 - Computer and related activities"	73 "73 - Research and development"	74 "74 - Other business activities"	75 "75 - Public administration and defence; compulsory social security"	///
+                                          80 "80 - Education"	85 "85 - Health and social work"	90 "90 - Sewage and refuse disposal, sanitation and similar activities"	91 "91 - Activities of membership organizations n.e.c."	///
+                                          92 "92 - Recreational, cultural and sporting activities"	93 "93 - Other service activities"	95 "95 - Activities of private households as employers of domestic staff"	96 "96 - Undifferentiated goods-producing activities of private households for own use"	///
+                                          97 "97 - Undifferentiated service-producing activities of private households for own use"	99 "99 - Extra-territorial organizations and bodies"			
+                lab val ilo_job1_eco_isic3_2digits eco_isic3_2digits
+                lab var ilo_job1_eco_isic3_2digits "Economic activity (ISIC Rev. 3.1), 2 digits level - main job"
 		
 
 	
@@ -560,9 +624,14 @@ gen ilo_job1_eco_isic3=.
 		replace ilo_job1_eco_isic3=16 if ilo_job1_eco_isic3_2digits>94&ilo_job1_eco_isic3_2digits<98
 		replace ilo_job1_eco_isic3=17 if ilo_job1_eco_isic3_2digits==99
 		replace ilo_job1_eco_isic3=18 if ilo_job1_eco_isic3_2digits==. & ilo_lfs==1
-			lab val ilo_job1_eco_isic3 isic3
-			lab var ilo_job1_eco_isic3 "Economic activity (ISIC Rev. 3.1)"
-			
+		        lab def eco_isic3_1digit 1 "A - Agriculture, hunting and forestry"	2 "B - Fishing"	3 "C - Mining and quarrying"	4 "D - Manufacturing"	///
+                                         5 "E - Electricity, gas and water supply"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles, motorcycles and personal and household goods"	8 "H - Hotels and restaurants"	///
+                                         9 "I - Transport, storage and communications"	10 "J - Financial intermediation"	11 "K - Real estate, renting and business activities"	12 "L - Public administration and defence; compulsory social security"	///
+                                         13 "M - Education"	14 "N - Health and social work"	15 "O - Other community, social and personal service activities"	16 "P - Activities of private households as employers and undifferentiated production activities of private households"	///
+                                         17 "Q - Extraterritorial organizations and bodies"	18 "X - Not elsewhere classified"			
+			    lab val ilo_job1_eco_isic3 eco_isic3_1digit
+			    lab var ilo_job1_eco_isic3 "Economic activity (ISIC Rev. 3.1) - main job"
+				
 	* Now do the classification on an aggregate level
 	
 	* Primary activity
@@ -575,13 +644,13 @@ gen ilo_job1_eco_isic3=.
 		replace ilo_job1_eco_aggregate=5 if inrange(ilo_job1_eco_isic3,7,11)
 		replace ilo_job1_eco_aggregate=6 if inrange(ilo_job1_eco_isic3,12,17)
 		replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_isic3==18
-			lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-								5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-								6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			 lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
 			lab val ilo_job1_eco_aggregate eco_aggr_lab
-			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 				
-
+}
 
 
 * -------------------------------------------------------------------------------------------
@@ -590,16 +659,23 @@ gen ilo_job1_eco_isic3=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
 	
-	/* Classification used: ISCO 08  */
+	/* Classification used: ISCO 88  */
 
 	* MAIN JOB:	
 	
-		* ISCO 08- 2 digit
+		* ISCO 88- 2 digit
 			gen todrop=sec_5_9
 			replace todrop=trunc(todrop/100)
 			gen ilo_job1_ocu_isco88_2digits=todrop if (ilo_lfs==1)	
-				label values ilo_job1_ocu_isco88_2digits isco88_2digits
-				lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level"
+		        lab def ocu_isco88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers"	///
+                                           21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals"	///
+                                           31 "31 - Physical and engineering science associate professionals"	32 "32 - Life science and health associate professionals"	33 "33 - Teaching associate professionals"	34 "34 - Other associate professionals"	///
+                                           41 "41 - Office clerks"	42 "42 - Customer services clerks"	51 "51 - Personal and protective services workers"	52 "52 - Models, salespersons and demonstrators"	///
+                                           61 "61 - Skilled agricultural and fishery workers"	62 "62 - Subsistence agricultural and fishery workers"	71 "71 - Extraction and building trades workers"	72 "72 - Metal, machinery and related trades workers"	///
+                                           73 "73 - Precision, handicraft, craft printing and related trades workers"	74 "74 - Other craft and related trades workers"	81 "81 - Stationary plant and related operators"	82 "82 - Machine operators and assemblers"	///
+                                           83 "83 - Drivers and mobile plant operators"	91 "91 - Sales and services elementary occupations"	92 "92 - Agricultural, fishery and related labourers"	93 "93 - Labourers in mining, construction, manufacturing and transport"	
+	            lab values ilo_job1_ocu_isco88_2digits ocu_isco88_2digits
+	            lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - main job"
 			drop todrop
 		
 		* ISCO 88 - 1 digit
@@ -615,11 +691,11 @@ gen ilo_job1_eco_isic3=.
 				replace ilo_job1_ocu_isco88=9 if inrange(ilo_job1_ocu_isco88_2digits,90,98)
 				replace ilo_job1_ocu_isco88=10 if inrange(ilo_job1_ocu_isco88_2digits,1,1)
 				replace ilo_job1_ocu_isco88=11 if (ilo_job1_ocu_isco88==. & ilo_lfs==1)
-					lab def isco88_1dig_lab 1 "1 - Managers" 2 "2 - Professionals" 3 "3 - Technicians and associate professionals" 4 "4 - Clerical support workers" 5 "5 - Service and sales workers" ///
-									6 "6 - Skilled agricultural, forestry and fishery workers" 7 "7 - Craft and related trades workers" 8 "8 - Plant and machine operators, and assemblers" ///
-									9 "9 - Elementary occupations" 10 "0 - Armed forces occupations" 11 "X - Not elsewhere classified"
-					lab val ilo_job1_ocu_isco88 isco88_1dig_lab
-					lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88)"		
+		        lab def ocu_isco88_1digit 1 "1 - Legislators, senior officials and managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerks"	///
+                                          5 "5 - Service workers and shop and market sales workers"	6 "6 - Skilled agricultural and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces"	11 "11 - Not elsewhere classified"		
+				lab val ilo_job1_ocu_isco88 ocu_isco88_1digit
+				lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88) - main job"
 
 		* Aggregate:			
 			gen ilo_job1_ocu_aggregate=.
@@ -633,13 +709,15 @@ gen ilo_job1_eco_isic3=.
 					lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
 										4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
 					lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate)"	
+					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"		
+					
 
 		* Skill level
 		recode ilo_job1_ocu_isco88 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_job1_ocu_skill)
-		lab def ilo_job1_ocu_skill 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
-		lab val ilo_job1_ocu_skill ilo_job1_ocu_skill
-		lab var ilo_job1_ocu_skill "Occupation (Skill level)"
+				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
+			    lab val ilo_job1_ocu_skill ocu_skill_lab
+			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Institutional sector of economic activities ('ilo_job1_ins_sector')
@@ -652,7 +730,7 @@ gen ilo_job1_eco_isic3=.
 			replace ilo_job1_ins_sector=1 if (inlist(sec_5_11,1,2,3,4) & ilo_lfs==1)	// Public
 			replace ilo_job1_ins_sector=2 if (inlist(sec_5_11,5,6,7,8,9,10) & ilo_lfs==1)	// Private
 			* lots of missing values due to the question not being asked to workers in agriculture
-			replace ilo_job1_ins_sector=2 if ilo_job1_eco_isic3==1&ilo_lfs==1&ilo_job1_ins_sector==.
+			*replace ilo_job1_ins_sector=2 if ilo_job1_eco_isic3==1&ilo_lfs==1&ilo_job1_ins_sector==.
 			* some missing questions
 			replace ilo_job1_ins_sector=2 if ilo_lfs==1&ilo_job1_ins_sector==.
 				lab def ins_sector_lab 1 "1 - Public" 2 "2 - Private" 
@@ -716,6 +794,12 @@ agreement
 	*** Preparing necessary variables - the variables must be adjusted to fit the data
 	
 	recode sec_5_11 (1/5=1) (6/10 =0) , gen(todrop_institutional) 				// theoretical 3 value node/ +1 Gov, Corporation, NGO, Embassy, IO / 0 Farm or private business, other, not asked, don't know, NA / -1 private household
+	if ${time} >2008 {
+	replace todrop_institutional=-1 if ilo_job1_eco_isic3_2digits==95|ilo_job1_ocu_isco88_2digits==62
+	}
+	else {
+	replace todrop_institutional=-1 if ilo_job1_ocu_isco88_2digits==62
+	}
 	replace todrop_institutional=0 if todrop_institutional==. 						// if the absence of the created variable is due to complete absence informality should not be computed
 	
 	gen todrop_destinationprod=1 													// theoretical 2 value node / +1 At least partially market or Other, Not asked, Don't Know, NA/  0 Only for own final use (household) :::actual node empty(no necessary data available)
@@ -802,9 +886,9 @@ agreement
 				replace ilo_job1_ife_nature=1 if ilo_lfs==1&(ilo_job1_ste_icse93==1|ilo_job1_ste_icse93==6)&todrop_SS==0&todrop_paidleave==0
 				replace ilo_job1_ife_nature=1 if ilo_lfs==1&(ilo_job1_ste_icse93==1|ilo_job1_ste_icse93==6)&todrop_SS==0&todrop_paidleave==1&todrop_paidsick==0
 				*Employers or Members of coop
-				replace ilo_job1_ife_nature=1 if ilo_lfs==1&(ilo_job1_ste_icse93==2|ilo_job1_ste_icse93==4)&ilo_job1_ife_prod==1
+				replace ilo_job1_ife_nature=1 if ilo_lfs==1&(ilo_job1_ste_icse93==2|ilo_job1_ste_icse93==4)&(ilo_job1_ife_prod==1|ilo_job1_ife_prod==3)
 				*OAW
-				replace ilo_job1_ife_nature=1 if ilo_lfs==1&ilo_job1_ste_icse93==3&todrop_producesforsale==1&ilo_job1_ife_prod==1
+				replace ilo_job1_ife_nature=1 if ilo_lfs==1&ilo_job1_ste_icse93==3&todrop_producesforsale==1&(ilo_job1_ife_prod==1|ilo_job1_ife_prod==3)
 				replace ilo_job1_ife_nature=1 if ilo_lfs==1&ilo_job1_ste_icse93==3&todrop_producesforsale==0
 			*Contributing Family Workers
 				replace ilo_job1_ife_nature=1 if ilo_lfs==1&ilo_job1_ste_icse93==5
@@ -827,7 +911,30 @@ agreement
 *			Hours of work ('ilo_job1_how')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
+if ${time} <= 2007 {
+
+* All jobs:
 		
+* 1) Weekly hours ACTUALLY worked:
+
+			egen ilo_joball_how_actual=rowtotal(sec_5_171) if (ilo_lfs==1)  
+					lab var ilo_joball_how_actual "Weekly hours actually worked in all jobs"
+
+			gen ilo_joball_how_actual_bands=.
+				replace ilo_joball_how_actual_bands=1 if ilo_joball_how_actual==0
+				replace ilo_joball_how_actual_bands=2 if inrange(ilo_joball_how_actual,1,14)
+				replace ilo_joball_how_actual_bands=3 if inrange(ilo_joball_how_actual,15,29)
+				replace ilo_joball_how_actual_bands=4 if inrange(ilo_joball_how_actual,30,34)
+				replace ilo_joball_how_actual_bands=5 if inrange(ilo_joball_how_actual,35,39)
+				replace ilo_joball_how_actual_bands=6 if inrange(ilo_joball_how_actual,40,48)
+				replace ilo_joball_how_actual_bands=7 if ilo_joball_how_actual>=49 & ilo_joball_how_actual!=.
+					lab def how_bands_lab 1 "No hours actually worked" 2 "01-14" 3 "15-29" 4 "30-34" 5 "35-39" 6 "40-48" 7 "49+" 
+					lab val ilo_joball_how_actual_bands how_bands_lab
+					lab var ilo_joball_how_actual_bands "Weekly hours actually worked bands in all jobs"
+
+
+} 
+else {		
 * Main job:
 
 * 1) Weekly hours ACTUALLY worked - Main job
@@ -903,7 +1010,7 @@ agreement
 * 2) Weekly hours USUALLY worked - Not available
 *NA
 				
-				
+}				
 	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -933,8 +1040,8 @@ agreement
 					gen ilo_job1_lri_ees=.
 						replace ilo_job1_lri_ees= sec_7_4_3 if (sec_7_4_3>0& ilo_job1_ste_aggregate==1 & ilo_job1_lri_ees==.)
 						replace ilo_job1_lri_ees=sec_7_3_3*52/12 if (sec_7_3_3 >0  & ilo_job1_ste_aggregate==1& ilo_job1_lri_ees==.)
-						replace ilo_job1_lri_ees=sec_7_5_3*365/12 if (sec_7_5_3 >0 & ilo_job1_ste_aggregate==1& ilo_job1_lri_ees==.)
 							lab var ilo_job1_lri_ees "Monthly earnings of employees in main job"	
+
 
 				
 				*SE
@@ -1041,10 +1148,16 @@ agreement
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
 
+*it uses PAK 1970 classifications based on ISIC 2
+if ${time} >2008 {
 	* Classification aggregated level
 	
 		* Primary activity
 	gen ilo_preveco_isic3_2digits=trunc(new_sec_9_11/100) if (ilo_lfs==2&ilo_cat_une==1)
+	            * labels already defined for main job
+		        lab val ilo_preveco_isic3_2digits eco_isic3_2digits
+                lab var ilo_preveco_isic3_2digits "Previous economic activity (ISIC Rev. 3.1), 2 digits level"
+
 
 					
 	* One digit level - for reference
@@ -1070,8 +1183,10 @@ agreement
 		replace ilo_preveco_isic3=16 if ilo_preveco_isic3_2digits==95
 		replace ilo_preveco_isic3=17 if ilo_preveco_isic3_2digits==99
 		replace ilo_preveco_isic3=18 if ilo_preveco_isic3_2digits==.  &ilo_lfs==2&ilo_cat_une==1
-			lab val ilo_preveco_isic3 isic3
-			lab var ilo_preveco_isic3 "Economic activity (ISIC Rev. 3.1)"
+               * labels already defined for main job
+		        lab val ilo_preveco_isic3 eco_isic3_1digit
+			    lab var ilo_preveco_isic3 "Previous economic activity (ISIC Rev. 3.1)"
+	
 			
 	* Now do the classification on an aggregate level
 	
@@ -1085,10 +1200,12 @@ agreement
 		replace ilo_preveco_aggregate=5 if inrange(ilo_preveco_isic3,7,11)
 		replace ilo_preveco_aggregate=6 if inrange(ilo_preveco_isic3,12,17)
 		replace ilo_preveco_aggregate=7 if ilo_preveco_isic3==18
-		lab val ilo_preveco_aggregate eco_aggr_lab
-			lab var ilo_preveco_aggregate "Economic activity (Aggregate)"
-				
+                * labels already defined for main job
+		        lab val ilo_preveco_aggregate eco_aggr_lab
+			    lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
 
+				
+}
 
 
 
@@ -1099,15 +1216,17 @@ agreement
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
 
-	/* Classification used: ISCO 08  */
+	/* Classification used: ISCO 88  */
 
 	* MAIN JOB:	
 	
-		* ISCO 08 - 2 digit
+		* ISCO 88 - 2 digit
 			gen ilo_prevocu_isco88_2digits=trunc(new_sec_9_11/100) if ilo_lfs==2&ilo_cat_une==1
+                * labels already defined for main job
+		        lab values ilo_prevocu_isco88_2digits ocu_isco88_2digits
+	            lab var ilo_prevocu_isco88_2digits "Previous occupation (ISCO-88), 2 digit level"
 
-
-		* ISCO 08 - 1 digit
+		* ISCO 88 - 1 digit
 
 	
 
@@ -1123,8 +1242,9 @@ agreement
 				replace ilo_prevocu_isco88=9 if inrange(ilo_prevocu_isco88_2digits,90,98)
 				replace ilo_prevocu_isco88=10 if inrange(ilo_prevocu_isco88_2digits,1,1)
 				replace ilo_prevocu_isco88=11 if (ilo_prevocu_isco88==.  &ilo_lfs==2&ilo_cat_une==1)
-				lab val ilo_prevocu_isco88 isco88_1dig_lab
-					lab var ilo_prevocu_isco88 "Occupation (ISCO-88)"		
+					* labels already defined for main job
+					lab val ilo_prevocu_isco88 ocu_isco88_1digit
+					lab var ilo_prevocu_isco88 "Previous occupation (ISCO-88)"	
 			
 		* Aggregate:			
 			gen ilo_prevocu_aggregate=.
@@ -1135,15 +1255,17 @@ agreement
 				replace ilo_prevocu_aggregate=5 if ilo_prevocu_isco88==9
 				replace ilo_prevocu_aggregate=6 if ilo_prevocu_isco88==10
 				replace ilo_prevocu_aggregate=7 if ilo_prevocu_isco88==11
-				lab val ilo_prevocu_aggregate ocu_aggr_lab
-					lab var ilo_prevocu_aggregate "Occupation (Aggregate)"	
+	                * labels already defined for main job
+					lab val ilo_prevocu_aggregate ocu_aggr_lab
+					lab var ilo_prevocu_aggregate "Previous occupation (Aggregate)"		
 	
 				
 				
 		* Skill level
 		recode ilo_prevocu_isco88 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_prevocu_skill)
-		lab val ilo_prevocu_skill ilo_prevocu_skill
-		lab var ilo_prevocu_skill "Previous occupation occupation (Skill level)"
+                * labels already defined for main job
+		        lab val ilo_prevocu_skill ocu_skill_lab
+			    lab var ilo_prevocu_skill "Occupation (Skill level) - main job"
 	
 	
 * -------------------------------------------------------------------------------------------
@@ -1203,8 +1325,7 @@ agreement
 *			Drop intermediate variables used for labeling activity and occupation
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-drop isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 isic3_2digits isic3
-* remove added variables
+ * remove added variables
 drop if original!=1
 drop original
 

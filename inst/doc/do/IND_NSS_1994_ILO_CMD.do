@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - India
 * DATASET USED: India NSS 
 * NOTES:
-* Authors: Devora Levakova, Yves Perardel, Ana Podjanin
-* Who last updated the file: Ana Podjanin
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 21 September 2017
-* Last updated: 25 September 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -18,7 +18,7 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "IND"
 global source "NSS"
 global time "1994"
@@ -29,60 +29,6 @@ global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
 
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-	* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-				
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							
-							gen `var'=code_level
-							
-							replace `var'=. if code_label`var'==""
-							
-							labmask `var' , val(code_label`var')
-							
-							}				
-				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
 *********************************************************************************************
 
 * Load original dataset
@@ -291,7 +237,35 @@ cd "$inpath"
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"
-		
+				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if B4_q6==1                                  // Single
+		replace ilo_mrts_details=2 if B4_q6==2                                  // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if B4_q6==3                                  // Widowed
+		replace ilo_mrts_details=5 if B4_q6==4                                  // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -318,7 +292,6 @@ cd "$inpath"
 
 		gen ilo_wap=.
 			replace ilo_wap=1 if ilo_age>=15 & ilo_age!=.
-			replace ilo_wap=0 if ilo_age<15
 				label def ilo_wap_lab 1 "Working age population"
 				label val ilo_wap ilo_wap_lab
 				label var ilo_wap "Working age population" //15+ population
@@ -491,8 +464,7 @@ use the same variable that was used to identify people in employment, as it cont
 
 	* no info on usual subsidiary activity
 
-	append using `labels', gen (lab)
-		* Use value label from this variable, afterwards drop everything related to this append
+ 
 
 	
 	gen indu_code_prim=B4_q14 if ilo_lfs==1
@@ -522,12 +494,12 @@ use the same variable that was used to identify people in employment, as it cont
 			replace ilo_job1_eco_aggregate=5 if inlist(indu_code_prim,6,7,8)
 			replace ilo_job1_eco_aggregate=6 if indu_code_prim==9
 			replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_aggregate==. & ilo_lfs==1
-					replace ilo_job1_eco_aggregate=. if ilo_lfs!=1
-				lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-									5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-									6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+			replace ilo_job1_eco_aggregate=. if ilo_lfs!=1
+				 lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
 				lab val ilo_job1_eco_aggregate eco_aggr_lab
-				lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+				lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 	
 	
 * -------------------------------------------------------------------------------------------
@@ -640,7 +612,7 @@ use the same variable that was used to identify people in employment, as it cont
 *		
 *			Casual worker is always informal - Usual_Principal_Activity_Status==41 | Usual_Principal_Activity_Status==51
 *
-*			In the agricultural sector, industry groups 011 (growing of non-perennial crops), 012 (growing of perennial crops), 013 (plant propagation) and 015 (mixed farming) of NIC – 2008 were 
+*			In the agricultural sector, industry groups 011 (growing of non-perennial crops), 012 (growing of perennial crops), 013 (plant propagation) and 015 (mixed farming) of NIC â€“ 2008 were 
 *			excluded for collection of information on characteristics of enterprises and conditions of employment. Therefore, the industry groups/ divisions 014, 016, 017, 02 and 03 cover the 
 *			agricultural sector excluding growing of crops, plant propagation, combined production of crops and animals without a specialized production of crops or animals 
 *			(henceforth referred to as AGEGC activities).
@@ -874,7 +846,6 @@ use the same variable that was used to identify people in employment, as it cont
 * -------------------------------------------------------------
 
 
-drop if lab==1
 
 * 1 - Full dataset with original variables and ILO ones
 	

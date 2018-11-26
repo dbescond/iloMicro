@@ -224,6 +224,36 @@ cd "$inpath"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: marital status question is made to people aged 12 years and above. 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if s1q7==1                                   // Single
+		replace ilo_mrts_details=2 if inlist(s1q7,2,3)                          // Married
+		replace ilo_mrts_details=3 if s1q7==5                                   // Union / cohabiting
+		replace ilo_mrts_details=4 if s1q7==7                                   // Widowed
+		replace ilo_mrts_details=5 if inlist(s1q7,4,6)                          // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"
+				
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')                              *
@@ -338,8 +368,6 @@ cd "$inpath"
 *			            Economic activity ('ilo_eco')                          *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-/*
-* Comment: 
 
     * MAIN JOB
 
@@ -348,9 +376,9 @@ cd "$inpath"
 	*---------------------------------------------------------------------------
 	
 	* 2-digit level
-	gen ilo_job1_eco_isic4_2digits = . 
-	    replace ilo_job1_eco_isic4_2digits =      if ilo_lfs==1
-	    replace ilo_job1_eco_isic4_2digits = .    if ilo_lfs!=1
+	gen ilo_job1_eco_isic4_2digits=. 
+	    replace ilo_job1_eco_isic4_2digits=int(industry/100) if ilo_lfs==1
+	    replace ilo_job1_eco_isic4_2digits=. if ilo_lfs!=1
 			    lab def eco_isic4_2digits 1 "01 - Crop and animal production, hunting and related service activities"	2 "02 - Forestry and logging"	3 "03 - Fishing and aquaculture"	5 "05 - Mining of coal and lignite" ///
                                           6 "06 - Extraction of crude petroleum and natural gas"	7 "07 - Mining of metal ores"	8 "08 - Other mining and quarrying"	9 "09 - Mining support service activities" ///
                                           10 "10 - Manufacture of food products"	11 "11 - Manufacture of beverages"	12 "12 - Manufacture of tobacco products"	13 "13 - Manufacture of textiles" ///
@@ -430,18 +458,16 @@ cd "$inpath"
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
 
-* Comment:
-
     * MAIN JOB
 				
     *---------------------------------------------------------------------------
 	* ISCO 08
 	*---------------------------------------------------------------------------
-	
+
 	* 2-digit level 
-    gen ilo_job1_ocu_isco08_2digits = . 
-	    replace ilo_job1_ocu_isco08_2digits =     if ilo_lfs==1
-		replace ilo_job1_ocu_isco08_2digits = .   if ilo_lfs!=1
+    gen ilo_job1_ocu_isco08_2digits=. 
+	    replace ilo_job1_ocu_isco08_2digits=int(occupation/100) if ilo_lfs==1
+		replace ilo_job1_ocu_isco08_2digits=. if ilo_lfs!=1
 		        lab def ocu_isco08_2digits 1 "01 - Commissioned armed forces officers"	2 "02 - Non-commissioned armed forces officers"	3 "03 - Armed forces occupations, other ranks"	11 "11 - Chief executives, senior officials and legislators"	///
                                            12 "12 - Administrative and commercial managers"	13 "13 - Production and specialised services managers"	14 "14 - Hospitality, retail and other services managers"	21 "21 - Science and engineering professionals"	///
                                            22 "22 - Health professionals"	23 "23 - Teaching professionals"	24 "24 - Business and administration professionals"	25 "25 - Information and communications technology professionals"	///
@@ -458,9 +484,9 @@ cd "$inpath"
 				
 	* 1-digit level 				
 	gen ilo_job1_ocu_isco08=.
-	    replace ilo_job1_ocu_isco08=11 if inlist(ilo_job1_ocu_isco08_2digits,) & ilo_lfs==1                          // Not elsewhere classified
-		replace ilo_job1_ocu_isco08=int(ilo_job1_ocu_isco08_2digits/10) if (ilo_job1_ocu_isco08==. & ilo_lfs==1)     // The rest of the occupations
-		replace ilo_job1_ocu_isco08=10 if (ilo_job1_ocu_isco08==0 & ilo_lfs==1)                                      // Armed forces
+	    replace ilo_job1_ocu_isco08=11 if inlist(ilo_job1_ocu_isco08_2digits,.) & ilo_lfs==1						// Not elsewhere classified
+		replace ilo_job1_ocu_isco08=int(ilo_job1_ocu_isco08_2digits/10) if (ilo_job1_ocu_isco08==. & ilo_lfs==1)	// The rest of the occupations
+		replace ilo_job1_ocu_isco08=10 if (ilo_job1_ocu_isco08==0 & ilo_lfs==1)										// Armed forces
 		        lab def ocu_isco08_1digit 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
                                           5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
                                           9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
@@ -489,8 +515,7 @@ cd "$inpath"
 		replace ilo_job1_ocu_skill=4 if inlist(ilo_job1_ocu_isco08,10,11)       // Not elsewhere classified
 				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
 			    lab val ilo_job1_ocu_skill ocu_skill_lab
-			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
-*/			
+			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"	
 
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
@@ -604,7 +629,7 @@ cd "$inpath"
     * 1) UNIT OF PRODUCTION: FORMAL/INFORMAL SECTOR
 	gen ilo_job1_ife_prod=.
 	    replace ilo_job1_ife_prod=3 if (s4q14==5 & ilo_lfs==1)
-		replace ilo_job1_ife_prod=2 if ((inlist(s4q14,1,2) | s4q12==1 | s4q13==1 | s4q13c==1 | (ilo_job1_ste_icse93==1 & social_security==1)) & ilo_job1_ife_prod!=3 & ilo_lfs==1)
+		replace ilo_job1_ife_prod=2 if ((inlist(s4q14,1,2) | s4q12==1 | s4q13==1 | s4q13c==1 | (ilo_job1_ste_icse93==1 & social_security==1)) & ilo_lfs==1)
 		replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,2,3)
 				lab def ilo_ife_prod_lab 1 "1 - Informal" 2 "2 - Formal" 3 "3 - Household" 
 				lab val ilo_job1_ife_prod ilo_ife_prod_lab
@@ -625,35 +650,21 @@ cd "$inpath"
 *	    Monthly related income ('ilo_ear_ees' and 'ilo_ear_slf')  		       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-/*
+
     * MAIN JOB
 	
 	* Employees
-	gen ilo_job1_lri_ees = .
-	    replace ilo_job1_lri_ees =       if ilo_job1_ste_aggregate==1
-	    replace ilo_job1_lri_ees = .     if ilo_lfs!=1
+	gen ilo_job1_lri_ees=.
+	    replace ilo_job1_lri_ees=monthly_salary if ilo_job1_ste_aggregate==1
+	    replace ilo_job1_lri_ees=. if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
 	
 	* Self-employed
-	gen ilo_job1_lri_slf = .
-	    replace ilo_job1_lri_slf =       if ilo_job1_ste_aggregate==2
-	    replace ilo_job1_lri_slf = .     if ilo_lfs!=1
+	gen ilo_job1_lri_slf=.
+	    replace ilo_job1_lri_slf=monthly_salary if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf=. if ilo_lfs!=1
 		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"
 
-    * SECOND JOB
-
-	* Employees
-	gen ilo_job2_lri_ees = .
-	    replace ilo_job2_lri_ees =       if ilo_job2_ste_aggregate==1
-		replace ilo_job2_lri_ees = .     if ilo_mjh!=2
-		        lab var ilo_job2_lri_ees "Monthly earnings of employees - second job"
-		
-    * Self-employed		
-	gen ilo_job2_lri_slf = .
-	    replace ilo_job2_lri_slf =       if ilo_job2_ste_aggregate==2
-		replace ilo_job2_lri_slf = .     if ilo_mjh!=2
-		        lab var ilo_job2_lri_slf "Monthly labour related income of self-employed - second job"
-*/
 
 
 * ------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 * Files created: Standard variables on LFS Ethiopia
 * Authors: DPAU 
 * Starting Date: 23 February 2018
-* Last updated:  01 March 2018
+* Last updated:  05 March 2018
 ***********************************************************************************************
 
 
@@ -21,37 +21,21 @@ global path "J:\DPAU\MICRO"
 global country "ETH"
 global source "NLFS"
 global time "1999"
-global input_file "ETH_NLFS_1999.DTA"
+global inputFile "ETH_NLFS_1999.DTA"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
  
 
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-	* ssc install labutil
-
-************************************************************************************
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use "${input_file}", clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
 	
-	rename *, lower
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -210,17 +194,17 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-*** DOUBT: literacy campaing and non-regular??? pre-primary??
-
+ 
 gen ilo_edu_isced97=.
 		replace ilo_edu_isced97=1 if lf22==2                                                             // X - No schooling
-		replace ilo_edu_isced97=2 if inlist(lf23,95,96)                                                // 0 - Pre-primary education
+		replace ilo_edu_isced97=2 if lf23==95                                                          // 0 - Pre-primary education
 		replace ilo_edu_isced97=3 if inrange(lf23,1,8)                                                 // 1 - Primary education or first stage of basic education
 		replace ilo_edu_isced97=4 if inrange(lf23,9,10)                                                 // 2 - Lower secondary or second stage of basic education
 		replace ilo_edu_isced97=5 if inrange(lf23,11,22)                                                // 3 - Upper secondary education
 		*replace ilo_edu_isced97=6 if inrange(lf23,25,32)                                               // 4 - Post-secondary non-tertiary education
 		replace ilo_edu_isced97=7 if inrange(lf23,23,24)                                                // 5 - First stage of tertiary education
  		replace ilo_edu_isced97=8 if lf23==25                                                           // 6 - Second stage of tertiary education
+		replace ilo_edu_isced97=9 if inlist(lf23,96,99)                                                   // UNK - Level not stated
         replace ilo_edu_isced97=9 if ilo_edu_isced97 == .                                                // UNK - Level not stated
 		 
      
@@ -246,7 +230,36 @@ gen ilo_edu_isced97=.
 			label val ilo_edu_aggregate edu_aggr_lab
 			label var ilo_edu_aggregate "Education (Aggregate level)"
 
- 	
+ 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: marital status is asked to the population aged above 9 years.  
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if lf27==1                                  // Single
+		replace ilo_mrts_details=2 if lf27==2                                  // Married
+		*replace ilo_mrts_details=3 if lf27==                                  // Union / cohabiting
+		replace ilo_mrts_details=4 if lf27==4                                  // Widowed
+		replace ilo_mrts_details=5 if inlist(lf27,3,5)                         // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+			 
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -254,7 +267,7 @@ gen ilo_edu_isced97=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
  /*
- **Comment: no info >> therefore it is not possible to compute NEET
+ **Comment: no info >> therefore, it is not possible to compute NEET
  ** variable lf60 only asked to people aged 5-14-yr-old
  
 gen ilo_edu_attendance = .
@@ -300,8 +313,6 @@ gen ilo_edu_attendance = .
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-** DOUBT: they consider people in employment those who are woking more than 4hours/week -- no. hours!?
-** DOURB: they have very primitive variables for working status
 
 * Comment: ** - The WAP in Ethiopia starts in 10 years, however all the questions related to economic activity are asked to 
 *               people from 5 yr-old [T2:239_T3:89]
@@ -341,14 +352,10 @@ gen ilo_edu_attendance = .
 * -------------------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------------------- 
 
-*** Yves: according to the ILO standards (either 19th or 13th-point 144) category 11 (apprentice) 
-**        is not considered as people in employment because they don't reveice any pay (lf311 lf313).
-**        however when I cross lf311 with ilo_lfs they are apparently working
-
 	* MAIN JOB
 		
 		gen ilo_job1_ste_icse93=.
-			replace ilo_job1_ste_icse93=1 if inrange(lf38,1,4) // 1 - Employees
+			replace ilo_job1_ste_icse93=1 if inrange(lf38,1,4) | lf38==8 // 1 - Employees
 			replace ilo_job1_ste_icse93=2 if lf38==5  // 2 - Employers
 			replace ilo_job1_ste_icse93=3 if lf38==6  // 3 - Own-account workers
 			replace ilo_job1_ste_icse93=4 if lf38==9    // 4 - Members of producers' cooperatives
@@ -586,7 +593,7 @@ gen ilo_edu_attendance = .
  
 ** Main job
 				
-	*** Comment: no info available. Only a variable regarding to work 4hours or more lf32
+	*** Comment: no info available. Only a variable regarding to work 4hours or more (lf32)
 				
 		 
 		
@@ -647,9 +654,9 @@ gen ilo_job1_job_contract=.
  			   
 			   replace ilo_job1_ife_prod=3 if ilo_lfs==1 & (ilo_job1_eco_isic3_2digits==95 | ilo_job1_ocu_isco88_2digits==62)
  				
- 				replace ilo_job1_ife_prod=2 if ilo_lfs==1 & (inrange(lf38,1,4) | (!inrange(lf38,1,4)   & lf39==1) | (!inrange(lf38,1,4)   & lf39!=1 & lf41==1))
+ 				replace ilo_job1_ife_prod=2 if ilo_lfs==1 & (inlist(lf38,1,2,4) | (!inlist(lf38,1,2,4)   & lf39==1) | (!inlist(lf38,1,2,4)   & lf39!=1 & lf41==1))
  											  
-			    replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,3,2) &  !inrange(lf38,1,4) & lf39!=1 & lf41!=1
+			    replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,3,2) &  !inlist(lf38,1,2,4) & lf39!=1 & lf41!=1
 				                               
 				        lab def ilo_ife_prod_lab 1 "1 - Informal" 2 "2 - Formal" 3 "3 - Household" 
 						lab val ilo_job1_ife_prod ilo_ife_prod_lab
@@ -663,7 +670,7 @@ gen ilo_job1_job_contract=.
 
 *** Comment: for employees and workers not classified by status, we do not have information on Social Security
 	
-	** therefore I think that this variable is not possible to compute
+	** therefore, this variable is not possible to compute
 	/*
 * 2) NATURE OF JOB: FORMAL/INFORMAL EMPLOYMENT
 	
@@ -805,10 +812,8 @@ gen ilo_job1_job_contract=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-*** Comment: no information on willigness available. 
-*** Yves: there are so many observations unclassified, should we compute this variable??
+*** Comment: thre is no information on willigness available. 
 
-** REVISAR Y COMPARAR 
 
 		gen ilo_olf_dlma = .
 				
@@ -829,8 +834,6 @@ gen ilo_job1_job_contract=.
 *			Reasons for not seeking a job ('ilo_olf_reason') 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-
-** YVES: Only 3.66% with LM reason
  
 
 gen ilo_olf_reason = .

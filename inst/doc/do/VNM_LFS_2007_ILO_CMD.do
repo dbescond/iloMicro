@@ -4,7 +4,7 @@
 * Files created: Standard variables on LFS Viet Nam 2009
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 22 February 2018
-* Last updated: 22 February 2018
+* Last updated: 27 June 2018
 ***********************************************************************************************
 
 
@@ -457,75 +457,118 @@ cd "$inpath"
 *			Occupation ('ilo_job1_ocu_isco88') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
-* Comment: - It can be mapped to ISCO 08 at 1 digit level.
+* Comment: - It can be mapped to ISCO 08/88 at 1 digit level.
 
-   * MAIN JOB:
-   	 gen occup_1dig=int(q26/10) if ilo_lfs==1 & q26>0
+    ***********
+    * MAIN JOB:
+    ***********
 
-   * ISCO 08 - 1 digit:
-	 gen ilo_job1_ocu_isco08=.
-	     replace ilo_job1_ocu_isco08 = 11 if occup_1dig==. & ilo_lfs==1                     // Not elsewhere classified
-		 replace ilo_job1_ocu_isco08 = occup_1dig if (ilo_job1_ocu_isco08==. & ilo_lfs==1)  // The rest of the occupations
-		 replace ilo_job1_ocu_isco08 = 10 if ilo_job1_ocu_isco08==0 & ilo_lfs==1            // Armed forces
-	             lab def ocu_isco08 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
-                                    5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
-                                    9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
-		         lab values ilo_job1_ocu_isco08 ocu_isco08
-				 lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08) - main job"
-	
-  * Aggregate
+    *---------------------------------------------------------------------------
+	* ISCO 88
+	*---------------------------------------------------------------------------
+
+	* 2-digit level 
+    gen ilo_job1_ocu_isco88_2digits = . 
+	    replace ilo_job1_ocu_isco88_2digits = q26  if ilo_lfs==1 & q26>0
+		replace ilo_job1_ocu_isco88_2digits = 11 if inlist(ilo_job1_ocu_isco88_2digits,11,12,13,14,15,16,17)
+		replace ilo_job1_ocu_isco88_2digits = 12 if ilo_job1_ocu_isco88_2digits==18
+		replace ilo_job1_ocu_isco88_2digits = 13 if ilo_job1_ocu_isco88_2digits==19
+		replace ilo_job1_ocu_isco88_2digits = 74 if ilo_job1_ocu_isco88_2digits==79
+		replace ilo_job1_ocu_isco88_2digits = .   if ilo_lfs!=1
+		        lab def ocu_isco88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers"	///
+                                           21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals"	///
+                                           31 "31 - Physical and engineering science associate professionals"	32 "32 - Life science and health associate professionals"	33 "33 - Teaching associate professionals"	34 "34 - Other associate professionals"	///
+                                           41 "41 - Office clerks"	42 "42 - Customer services clerks"	51 "51 - Personal and protective services workers"	52 "52 - Models, salespersons and demonstrators"	///
+                                           61 "61 - Skilled agricultural and fishery workers"	62 "62 - Subsistence agricultural and fishery workers"	71 "71 - Extraction and building trades workers"	72 "72 - Metal, machinery and related trades workers"	///
+                                           73 "73 - Precision, handicraft, craft printing and related trades workers"	74 "74 - Other craft and related trades workers"	81 "81 - Stationary plant and related operators"	82 "82 - Machine operators and assemblers"	///
+                                           83 "83 - Drivers and mobile plant operators"	91 "91 - Sales and services elementary occupations"	92 "92 - Agricultural, fishery and related labourers"	93 "93 - Labourers in mining, construction, manufacturing and transport"	
+	            lab values ilo_job1_ocu_isco88_2digits ocu_isco88_2digits
+	            lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - main job"
+			
+    * 1-digit level
+	gen ilo_job1_ocu_isco88=.
+	    replace ilo_job1_ocu_isco88=11 if inlist(ilo_job1_ocu_isco88_2digits,.) & ilo_lfs==1                          // Not elsewhere classified
+		replace ilo_job1_ocu_isco88=int(ilo_job1_ocu_isco88_2digits/10) if (ilo_job1_ocu_isco88==. & ilo_lfs==1)     // The rest of the occupations
+		replace ilo_job1_ocu_isco88=10 if (ilo_job1_ocu_isco88==0 & ilo_lfs==1)                                      // Armed forces
+		        lab def ocu_isco88_1digit 1 "1 - Legislators, senior officials and managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerks"	///
+                                          5 "5 - Service workers and shop and market sales workers"	6 "6 - Skilled agricultural and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces"	11 "11 - Not elsewhere classified"		
+				lab val ilo_job1_ocu_isco88 ocu_isco88_1digit
+				lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88) - main job"
+				
+	* Aggregate:			
 	gen ilo_job1_ocu_aggregate=.
-	    replace ilo_job1_ocu_aggregate=1 if inrange(ilo_job1_ocu_isco08,1,3)   
-		replace ilo_job1_ocu_aggregate=2 if inlist(ilo_job1_ocu_isco08,4,5)
-		replace ilo_job1_ocu_aggregate=3 if inlist(ilo_job1_ocu_isco08,6,7)
-		replace ilo_job1_ocu_aggregate=4 if ilo_job1_ocu_isco08==8
-		replace ilo_job1_ocu_aggregate=5 if ilo_job1_ocu_isco08==9
-		replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco08==10
-		replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco08==11
+		replace ilo_job1_ocu_aggregate=1 if inrange(ilo_job1_ocu_isco88,1,3)
+		replace ilo_job1_ocu_aggregate=2 if inlist(ilo_job1_ocu_isco88,4,5)
+		replace ilo_job1_ocu_aggregate=3 if inlist(ilo_job1_ocu_isco88,6,7)
+		replace ilo_job1_ocu_aggregate=4 if ilo_job1_ocu_isco88==8
+		replace ilo_job1_ocu_aggregate=5 if ilo_job1_ocu_isco88==9
+		replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco88==10
+		replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco88==11
 				lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
 									 4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
 				lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-				lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
-		
-  * Skill level
-	gen ilo_job1_ocu_skill=.
-	    replace ilo_job1_ocu_skill=1 if ilo_job1_ocu_isco08==9                  // Low
-		replace ilo_job1_ocu_skill=2 if inlist(ilo_job1_ocu_isco08,4,5,6,7,8)   // Medium
-		replace ilo_job1_ocu_skill=3 if inlist(ilo_job1_ocu_isco08,1,2,3)       // High
-		replace ilo_job1_ocu_skill=4 if inlist(ilo_job1_ocu_isco08,10,11)       // Not elsewhere classified
+				lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"				
+				
+    * Skill level				
+    gen ilo_job1_ocu_skill=.
+	    replace ilo_job1_ocu_skill=1 if ilo_job1_ocu_isco88==9                  // Low
+		replace ilo_job1_ocu_skill=2 if inlist(ilo_job1_ocu_isco88,4,5,6,7,8)   // Medium
+		replace ilo_job1_ocu_skill=3 if inlist(ilo_job1_ocu_isco88,1,2,3)       // High
+		replace ilo_job1_ocu_skill=4 if inlist(ilo_job1_ocu_isco88,10,11)       // Not elsewhere classified
 				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
 			    lab val ilo_job1_ocu_skill ocu_skill_lab
 			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
 				
-   * SECOND JOB:
-   	 gen occup_1dig2=int(q46/10) if ilo_mjh==2 & q46>0
+    *************
+    * SECOND JOB:
+    *************
 
-   * ISCO 08 - 1 digit:
-	 gen ilo_job2_ocu_isco08=.
-	     replace ilo_job2_ocu_isco08 = 11 if occup_1dig2==. & ilo_mjh==2                     // Not elsewhere classified
-		 replace ilo_job2_ocu_isco08 = occup_1dig2 if (ilo_job2_ocu_isco08==. & ilo_mjh==2)  // The rest of the occupations
-		 replace ilo_job2_ocu_isco08 = 10 if ilo_job2_ocu_isco08==0 & ilo_mjh==2             // Armed forces
-		         lab values ilo_job2_ocu_isco08 ocu_isco08
-				 lab var ilo_job2_ocu_isco08 "Occupation (ISCO-08) - second job"
-	
-  * Aggregate
+    *---------------------------------------------------------------------------
+	* ISCO 88
+	*---------------------------------------------------------------------------
+
+	* 2-digit level 
+    gen ilo_job2_ocu_isco88_2digits = . 
+	    replace ilo_job2_ocu_isco88_2digits = q46  if ilo_mjh==2 & q46>0
+		replace ilo_job2_ocu_isco88_2digits = 11 if inlist(ilo_job2_ocu_isco88_2digits,11,12,13,14,15,16,17)
+		replace ilo_job2_ocu_isco88_2digits = 12 if ilo_job2_ocu_isco88_2digits==18
+		replace ilo_job2_ocu_isco88_2digits = 13 if ilo_job2_ocu_isco88_2digits==19
+		replace ilo_job2_ocu_isco88_2digits = 74 if ilo_job2_ocu_isco88_2digits==79
+		replace ilo_job2_ocu_isco88_2digits = .   if ilo_mjh!=2
+                * labels already defined for main job
+		        lab values ilo_job2_ocu_isco88_2digits ocu_isco88_2digits
+	            lab var ilo_job2_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - second job"
+			
+    * 1-digit level
+	gen ilo_job2_ocu_isco88=.
+	    replace ilo_job2_ocu_isco88=11 if inlist(ilo_job2_ocu_isco88_2digits,.) & ilo_mjh==2                         // Not elsewhere classified
+		replace ilo_job2_ocu_isco88=int(ilo_job2_ocu_isco88_2digits/10) if (ilo_job2_ocu_isco88==. & ilo_mjh==2)     // The rest of the occupations
+		replace ilo_job2_ocu_isco88=10 if (ilo_job2_ocu_isco88==0 & ilo_mjh==2)                                      // Armed forces
+                * labels already defined for main job
+				lab val ilo_job2_ocu_isco88 ocu_isco88_1digit
+				lab var ilo_job2_ocu_isco88 "Occupation (ISCO-88) - second job"
+				
+	* Aggregate:			
 	gen ilo_job2_ocu_aggregate=.
-	    replace ilo_job2_ocu_aggregate=1 if inrange(ilo_job2_ocu_isco08,1,3)   
-		replace ilo_job2_ocu_aggregate=2 if inlist(ilo_job2_ocu_isco08,4,5)
-		replace ilo_job2_ocu_aggregate=3 if inlist(ilo_job2_ocu_isco08,6,7)
-		replace ilo_job2_ocu_aggregate=4 if ilo_job2_ocu_isco08==8
-		replace ilo_job2_ocu_aggregate=5 if ilo_job2_ocu_isco08==9
-		replace ilo_job2_ocu_aggregate=6 if ilo_job2_ocu_isco08==10
-		replace ilo_job2_ocu_aggregate=7 if ilo_job2_ocu_isco08==11
-				lab val ilo_job2_ocu_aggregate ocu_aggr_lab
-				lab var ilo_job2_ocu_aggregate "Occupation (Aggregate) - second job"	
-		
-  * Skill level
-	gen ilo_job2_ocu_skill=.
-	    replace ilo_job2_ocu_skill=1 if ilo_job2_ocu_isco08==9                  // Low
-		replace ilo_job2_ocu_skill=2 if inlist(ilo_job2_ocu_isco08,4,5,6,7,8)   // Medium
-		replace ilo_job2_ocu_skill=3 if inlist(ilo_job2_ocu_isco08,1,2,3)       // High
-		replace ilo_job2_ocu_skill=4 if inlist(ilo_job2_ocu_isco08,10,11)       // Not elsewhere classified
+		replace ilo_job2_ocu_aggregate=1 if inrange(ilo_job2_ocu_isco88,1,3)
+		replace ilo_job2_ocu_aggregate=2 if inlist(ilo_job2_ocu_isco88,4,5)
+		replace ilo_job2_ocu_aggregate=3 if inlist(ilo_job2_ocu_isco88,6,7)
+		replace ilo_job2_ocu_aggregate=4 if ilo_job2_ocu_isco88==8
+		replace ilo_job2_ocu_aggregate=5 if ilo_job2_ocu_isco88==9
+		replace ilo_job2_ocu_aggregate=6 if ilo_job2_ocu_isco88==10
+		replace ilo_job2_ocu_aggregate=7 if ilo_job2_ocu_isco88==11
+                * labels already defined for main job
+		        lab val ilo_job2_ocu_aggregate ocu_aggr_lab
+				lab var ilo_job2_ocu_aggregate "Occupation (Aggregate) - second job"				
+				
+    * Skill level				
+    gen ilo_job2_ocu_skill=.
+	    replace ilo_job2_ocu_skill=1 if ilo_job2_ocu_isco88==9                  // Low
+		replace ilo_job2_ocu_skill=2 if inlist(ilo_job2_ocu_isco88,4,5,6,7,8)   // Medium
+		replace ilo_job2_ocu_skill=3 if inlist(ilo_job2_ocu_isco88,1,2,3)       // High
+		replace ilo_job2_ocu_skill=4 if inlist(ilo_job2_ocu_isco88,10,11)       // Not elsewhere classified
+		        * labels already defined for main job
 			    lab val ilo_job2_ocu_skill ocu_skill_lab
 			    lab var ilo_job2_ocu_skill "Occupation (Skill level) - second job"
 
@@ -663,21 +706,21 @@ cd "$inpath"
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Formal / Informal Economy ('ilo_job1_ife_prod' 'ilo_job1_ife_nature') [to check------------------------------------------------------]
+*			Formal / Informal Economy ('ilo_job1_ife_prod' 'ilo_job1_ife_nature') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------			
 * Comment: 
 
             /*	Useful questions:
-			- Institutional sector: q42
+			- Institutional sector: q28
 			- Destination of production: not asked.
 			- Bookkeeping: not asked
-			- Registration: q45a & q45b (considered registered if answer's yes to both)
+			- Registration: q33a & q33b (considered registered if answer's yes to both)
 			- Status in employment: ilo_job1_ste_aggregate
-			- Social security contribution: q50c (pay for social insurance)
-			- Place of work: q40 
-			- Size: q46 (1st category is 1 to 20; Question: not used)
-			- Paid annual leave: q50b -> receive paid public holidays/leaves?
+			- Social security contribution: q36a (pay for social insurance)
+			- Place of work: q34 
+			- Size: q35a (q35b) (not used given that all workers are classified beforehand)
+			- Paid annual leave: q36b -> paid public holidays
 			- Paid sick leave: not asked
 		
 			 We use the economic activity classification to classify households 
@@ -687,13 +730,13 @@ cd "$inpath"
 	
     * Social security (to be dropped afterwards): 
             gen social_security=.
-			    replace social_security=1 if (q50c==1 & ilo_lfs==1)             // Pay for social insurance
-				replace social_security=2 if (q50c==2 & ilo_lfs==1)             // No pay for social insurance
+			    replace social_security=1 if (q36a==1 & ilo_lfs==1)             // Pay for social insurance
+				replace social_security=2 if (q36a==2 & ilo_lfs==1)             // No pay for social insurance
 				replace social_security=. if (social_security==. & ilo_lfs==1)
     * Registration 
             gen registration=.
-			    replace registration=1 if (q45a==1 & q45b==1) & ilo_lfs==1      // Business registration and Tax code registration
-				replace registration=2 if (q45a==2 | q45b==2) & ilo_lfs==1      // No business registration and no tax code registraiton
+			    replace registration=1 if (q33a==1 & q33b==1) & ilo_lfs==1      // Business registration and Tax code registration
+				replace registration=2 if (q33a==2 | q33b==2) & ilo_lfs==1      // No business registration and no tax code registraiton
 				replace registration=. if (registration==. & ilo_lfs==1)
 
 	* 1) UNIT OF PRODUCTION: FORMAL/INFORMAL SECTOR		
@@ -702,13 +745,13 @@ cd "$inpath"
 			    replace ilo_job1_ife_prod=3 if ilo_lfs==1 & ///
 				                              (ilo_job1_eco_isic4_2digits==97)
 				replace ilo_job1_ife_prod=2 if ilo_lfs==1 & ilo_job1_ife_prod!=3 & ///
-				                              ((q42==5) | /// 
-											  (q42!=5 & registration==1) | ///
-											  (q42!=5 & registration==. & ilo_job1_ste_aggregate==1 & social_security==1))
+				                              ((q28==5) | /// 
+											  (q28!=5 & registration==1) | ///
+											  (q28!=5 & registration==. & ilo_job1_ste_aggregate==1 & social_security==1))
 			    replace ilo_job1_ife_prod=1 if ilo_lfs==1 & ilo_job1_ife_prod!=2 & ilo_job1_ife_prod!=3 & ///
-				                              ((q42!=5 & registration==2) | ///
-											  (q42!=5 & registration==. & ilo_job1_ste_aggregate==1 & inlist(social_security,2,.)) | ///
-											  (q42!=5 & registration==. & ilo_job1_ste_aggregate!=1))
+				                              ((q28!=5 & registration==2) | ///
+											  (q28!=5 & registration==. & ilo_job1_ste_aggregate==1 & inlist(social_security,2,.)) | ///
+											  (q28!=5 & registration==. & ilo_job1_ste_aggregate!=1))
 				        lab def ilo_ife_prod_lab 1 "1 - Informal" 2 "2 - Formal" 3 "3 - Household" 
 						lab val ilo_job1_ife_prod ilo_ife_prod_lab
 						lab var ilo_job1_ife_prod "Informal / Formal Economy (Unit of production)"
@@ -740,7 +783,7 @@ cd "$inpath"
 	   
 	* MAIN JOB:
 	 gen income1=.
-	     replace income1 = q52 if q52>=0
+	     replace income1 = q44 if q44>=0
 	     replace income1 = income1*1000
 				
 	* Employees
@@ -754,7 +797,7 @@ cd "$inpath"
 				  
 	* SECOND JOB:
 	 gen income2=.
-	     replace income2 = q71 if q71>=0
+	     replace income2 = q56 if q56>=0
 	     replace income2 = income2*1000
 				
 	* Employees
@@ -775,14 +818,15 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_joball_tru') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------			
-* Comment: - Threshold used: 35 hours/week
+* Comment: - Threshold used: 35 hours/week.
 *          - Only the total hours ACTUALLY worked are available.
+*          - Two criteria: worked less than a threshold and willing to work more hours. (note: T35:2416)
 				
-		   gen ilo_joball_tru=.
-			   replace ilo_joball_tru=1 if ilo_lfs==1 & q76==1 & q77==1 & q78>0 & ilo_joball_how_actual<35
-				       lab def ilo_tru 1 "Time-related underemployed"
-					   lab val ilo_joball_tru ilo_tru
-					   lab var ilo_joball_tru "Time-related underemployed"				
+	  gen ilo_joball_tru=.
+		  replace ilo_joball_tru=1 if ilo_lfs==1 & q41==1 & q42>0 & ilo_joball_how_actual<35
+			      lab def ilo_tru 1 "Time-related underemployed"
+			      lab val ilo_joball_tru ilo_tru
+				  lab var ilo_joball_tru "Time-related underemployed"				
 					
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -803,8 +847,8 @@ cd "$inpath"
 * Comment: 
 
 		gen ilo_cat_une=.
-			replace ilo_cat_une=1 if ilo_lfs==2 & q30==1			            // Previously employed
-			replace ilo_cat_une=2 if ilo_lfs==2 & q30==2			            // Seeking first job
+			replace ilo_cat_une=1 if ilo_lfs==2 & q23==1			            // Previously employed
+			replace ilo_cat_une=2 if ilo_lfs==2 & q23==2			            // Seeking first job
 			replace ilo_cat_une=3 if ilo_cat_une==. & ilo_lfs==2	            // Unknown
 				    lab def cat_une_lab 1 "1 - Unemployed previously employed" 2 "2 - Unemployed seeking their first job" 3 "3 - Unknown"
 				    lab val ilo_cat_une cat_une_lab
@@ -815,7 +859,7 @@ cd "$inpath"
 *			Duration of unemployment ('ilo_dur') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - Question 25 asks since whed did the person start seeking for a job (month and 
+* Comment: - Question 25 asks since when did the person started seeking for a job (month and 
 *            year). However, there's no information on the month and the year when the question
 *            was made and therefore it's not possible to compute the variable.
 	
@@ -824,97 +868,14 @@ cd "$inpath"
 *			Previous economic activity ('ilo_preveco_isic4')  [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-* Comment:
+* Comment: - No information available.
 
-	* PREVIOUS JOB:
-	gen isic2dig_p = int(q38/10) if ilo_lfs==2 & ilo_cat_une==1
-	    replace isic2dig_p=. if isic2dig_p==0
-	
- 	* 2-digit level	
-	gen ilo_preveco_isic4_2digits=isic2dig_p if ilo_lfs==2 & ilo_cat_une==1
-	    * labels already defined for main job
-        lab val ilo_preveco_isic4_2digits eco_isic4_2digits
-        lab var ilo_preveco_isic4_2digits "Previous economic activity (ISIC Rev. 4), 2 digit level"
-
-	* 1-digit level
-    gen ilo_preveco_isic4=.
-	    replace ilo_preveco_isic4=1 if inrange(ilo_preveco_isic4_2digits,1,3)
-	    replace ilo_preveco_isic4=2 if inrange(ilo_preveco_isic4_2digits,5,9)
-	    replace ilo_preveco_isic4=3 if inrange(ilo_preveco_isic4_2digits,10,33)
-	    replace ilo_preveco_isic4=4 if ilo_preveco_isic4_2digits==35
-	    replace ilo_preveco_isic4=5 if inrange(ilo_preveco_isic4_2digits,36,39)
-	    replace ilo_preveco_isic4=6 if inrange(ilo_preveco_isic4_2digits,41,43)
-	    replace ilo_preveco_isic4=7 if inrange(ilo_preveco_isic4_2digits,45,47)
-	    replace ilo_preveco_isic4=8 if inrange(ilo_preveco_isic4_2digits,49,53)
-	    replace ilo_preveco_isic4=9 if inrange(ilo_preveco_isic4_2digits,55,56)
-	    replace ilo_preveco_isic4=10 if inrange(ilo_preveco_isic4_2digits,58,63)
-	    replace ilo_preveco_isic4=11 if inrange(ilo_preveco_isic4_2digits,64,66)
-	    replace ilo_preveco_isic4=12 if ilo_preveco_isic4_2digits==68
-	    replace ilo_preveco_isic4=13 if inrange(ilo_preveco_isic4_2digits,69,75)		
-	    replace ilo_preveco_isic4=14 if inrange(ilo_preveco_isic4_2digits,77,82)
-	    replace ilo_preveco_isic4=15 if ilo_preveco_isic4_2digits==84
-        replace ilo_preveco_isic4=16 if ilo_preveco_isic4_2digits==85
-	    replace ilo_preveco_isic4=17 if inrange(ilo_preveco_isic4_2digits,86,88)
-	    replace ilo_preveco_isic4=18 if inrange(ilo_preveco_isic4_2digits,90,93)
-	    replace ilo_preveco_isic4=19 if inrange(ilo_preveco_isic4_2digits,94,96)
-	    replace ilo_preveco_isic4=20 if inrange(ilo_preveco_isic4_2digits,97,98)
-	    replace ilo_preveco_isic4=21 if ilo_preveco_isic4_2digits==99
-	    replace ilo_preveco_isic4=22 if inlist(ilo_preveco_isic4_2digits,0,.) & ilo_cat_une==1
-		        * labels already defined for main job		
-  	  		    lab val ilo_preveco_isic4 eco_isic4
-			    lab var ilo_preveco_isic4 "Previous economic activity (ISIC Rev. 4)"
-
-   * Aggregate level
-   gen ilo_preveco_aggregate=.
-	   replace ilo_preveco_aggregate=1 if ilo_preveco_isic4==1
-	   replace ilo_preveco_aggregate=2 if ilo_preveco_isic4==3
-	   replace ilo_preveco_aggregate=3 if ilo_preveco_isic4==6
-	   replace ilo_preveco_aggregate=4 if inlist(ilo_preveco_isic4,2,4,5)
-	   replace ilo_preveco_aggregate=5 if inrange(ilo_preveco_isic4,7,14)
-	   replace ilo_preveco_aggregate=6 if inrange(ilo_preveco_isic4,15,21)
-	   replace ilo_preveco_aggregate=7 if ilo_preveco_isic4==22
-			   * labels already defined for main job					
-			   lab val ilo_preveco_aggregate eco_aggr_lab
-			   lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
-		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Previous occupation ('ilo_prevocu') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-* Comment: 	
-
-   * MAIN JOB:
-   	 gen occup_1dig_p=int(q34/100) if ilo_lfs==2 & ilo_cat_une==1 & q34>0
-				 
-    * 1-digit level
-	gen ilo_prevocu_isco08=.
-	    replace ilo_prevocu_isco08=11 if occup_1dig_p==. & ilo_lfs==2 & ilo_cat_une==1                        // Not elsewhere classified
-		replace ilo_prevocu_isco08=occup_1dig_p if (ilo_prevocu_isco08==. & ilo_lfs==2 & ilo_cat_une==1)      // The rest of the occupations
-		replace ilo_prevocu_isco08=10 if (ilo_prevocu_isco08==0 & ilo_lfs==2 & ilo_cat_une==1)                // Armed forces
-				lab val ilo_prevocu_isco08 ocu_isco08
-				lab var ilo_prevocu_isco08 "Previous occupation (ISCO-08)"
-			
-	* Aggregate:			
-    gen ilo_prevocu_aggregate=.
-	    replace ilo_prevocu_aggregate=1 if inrange(ilo_prevocu_isco08,1,3)   
-	    replace ilo_prevocu_aggregate=2 if inlist(ilo_prevocu_isco08,4,5)
-	    replace ilo_prevocu_aggregate=3 if inlist(ilo_prevocu_isco08,6,7)
-	    replace ilo_prevocu_aggregate=4 if ilo_prevocu_isco08==8
-	    replace ilo_prevocu_aggregate=5 if ilo_prevocu_isco08==9
-	    replace ilo_prevocu_aggregate=6 if ilo_prevocu_isco08==10
-	    replace ilo_prevocu_aggregate=7 if ilo_prevocu_isco08==11
-		        lab val ilo_prevocu_aggregate ocu_aggr_lab
-			    lab var ilo_prevocu_aggregate "Previous occupation (Aggregate)"	
-		
-	* Skill level
-	gen ilo_prevocu_skill=.
-	    replace ilo_prevocu_skill=1 if ilo_prevocu_isco08==9                   // Low
-		replace ilo_prevocu_skill=2 if inlist(ilo_prevocu_isco08,4,5,6,7,8)    // Medium
-		replace ilo_prevocu_skill=3 if inlist(ilo_prevocu_isco08,1,2,3)        // High
-		replace ilo_prevocu_skill=4 if inlist(ilo_prevocu_isco08,10,11)        // Not elsewhere classified
-			    lab val ilo_prevocu_skill ocu_skill_lab
-			    lab var ilo_prevocu_skill "Previous occupation (Skill level)"
+* Comment: - No information available.
 	
 ***********************************************************************************************
 *			PART 3.3. OUTSIDE LABOUR FORCE: ECONOMIC CHARACTERISTICS
@@ -927,10 +888,10 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------		
 * Comment:	- No information available concerning willingness, therefore, categories 3 and 4
 *             are not possible to be produced.
-	
+
 	gen ilo_olf_dlma=.
-		replace ilo_olf_dlma = 1 if q23==1 & q26==2 & ilo_lfs==3 				// Seeking, not available
-		replace ilo_olf_dlma = 2 if q23==2 & q26==1 & ilo_lfs==3				// Not seeking, available
+		replace ilo_olf_dlma = 1 if q16==1 & q18==2 & ilo_lfs==3 				// Seeking, not available
+		replace ilo_olf_dlma = 2 if q16==2 & q18==1 & ilo_lfs==3				// Not seeking, available
 		* replace ilo_olf_dlma = 3 if 											// Not seeking, not available, willing
 		* replace ilo_olf_dlma = 4 if                                   		// Not seeking, not available, not willing
 		replace ilo_olf_dlma = 5 if	ilo_olf_dlma==. & ilo_lfs==3				// Not classified 
@@ -944,13 +905,13 @@ cd "$inpath"
 *			Reason for not seeking job ('ilo_olf_reason') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
-* Comment:
+* Comment: - No reasons related to other labour market reasons or personal family-realted.
 
 	gen ilo_olf_reason=.
-		replace ilo_olf_reason=1 if	inlist(q28,2,3) & ilo_lfs==3   		        // Labour market
-		replace ilo_olf_reason=2 if q28==4 & ilo_lfs==3                         // Other labour market reasons
-		replace ilo_olf_reason=3 if	inlist(q28,7,8,9) & ilo_lfs==3	            // Personal/Family-related
-		replace ilo_olf_reason=4 if q28==1 & ilo_lfs==3						    // Does not need/want to work
+		replace ilo_olf_reason=1 if	inlist(q21,2,3,4) & ilo_lfs==3   		    // Labour market
+		* replace ilo_olf_reason=2 if                                           // Other labour market reasons
+		* replace ilo_olf_reason=3 if		                                    // Personal/Family-related
+		replace ilo_olf_reason=4 if q21==1 & ilo_lfs==3						    // Does not need/want to work
 		replace ilo_olf_reason=5 if ilo_olf_reason==. & ilo_lfs==3	            // Not elsewhere classified
 			    lab def reasons_lab 1 "1 - Labour market" 2 "2 - Other labour market reasons" 3 "3 - Personal / Family-related" ///
 			 					    4 "4 - Does not need/want to work" 5 "5 - Not elsewhere classified"
@@ -964,7 +925,7 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------		
 * Comment:
 		
-	gen ilo_dis=1 if ilo_lfs==3 & q26==1 & ilo_olf_reason==1
+	gen ilo_dis=1 if ilo_lfs==3 & q18==1 & ilo_olf_reason==1
 		lab def dis_lab 1 "Discouraged job-seekers"
 		lab val ilo_dis dis_lab
 		lab var ilo_dis "Discouraged job-seekers"
@@ -974,8 +935,13 @@ cd "$inpath"
 *			Youth not in education, employment or training ('ilo_neet') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
-* Comment: Not possible to compute since educational attendance is not available
+* Comment: 
 
+	  gen ilo_neet=1 if ilo_age_aggregate==2 & ilo_lfs!=1 & ilo_edu_attendance==2
+		  lab def neet_lab 1 "Youth not in education, employment or training"
+		  lab val ilo_neet neet_lab
+		  lab var ilo_neet "Youth not in education, employment or training"		
+		  
 ***********************************************************************************************
 ***********************************************************************************************
 
@@ -983,8 +949,6 @@ cd "$inpath"
 
 ***********************************************************************************************
 ***********************************************************************************************
-
-
 * -------------------------------------------------------------
 * 	Prepare final datasets
 * -------------------------------------------------------------
@@ -995,7 +959,7 @@ cd "$outpath"
 		drop ilo_age 
 		
 		/*Variables computed in-between*/
-		drop isic2dig isic2dig2 occup_1dig occup_1dig2 social_security registration income1 income2 isic2dig_p occup_1dig_p
+		drop isic2dig isic2dig2 social_security registration income1 income2
 		compress 
 		
 	    /*Save dataset including original and ilo variables*/

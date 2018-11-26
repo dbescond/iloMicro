@@ -230,9 +230,9 @@ cd "$inpath"
 * Comment: 
 			
     gen ilo_edu_attendance=.
-		replace ilo_edu_attendance=1 if                        // Attending
-		replace ilo_edu_attendance=2 if                        // Not attending
-		replace ilo_edu_attendance=3 if ilo_edu_attendance==.  // Not elsewhere classified
+		replace ilo_edu_attendance=2 if b09==0                                  // Not attending		
+		replace ilo_edu_attendance=3 if b09==.                                  // Not elsewhere classified
+		replace ilo_edu_attendance=1 if ilo_edu_attendance==.                   // Attending
 			    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 			    lab val ilo_edu_attendance edu_attendance_lab
 			    lab var ilo_edu_attendance "Education (Attendance)"

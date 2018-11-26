@@ -4,7 +4,7 @@
 * Files created: Standard variables on LFS Ethiopia
 * Authors: DPAU 
 * Starting Date: 23 February 2018
-* Last updated:  01 March 2018
+* Last updated:  05 March 2018
 ***********************************************************************************************
 
 
@@ -21,7 +21,7 @@ global path "J:\DPAU\MICRO"
 global country "ETH"
 global source "NLFS"
 global time "2005"
-global input_file "ETH_NLFS_2005.DTA"
+global inputFile "ETH_NLFS_2005.DTA"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
@@ -29,31 +29,14 @@ global outpath "${path}\\${country}\\${source}\\${time}"
  
 
 
-
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-	* ssc install labutil
-
-************************************************************************************
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use "${input_file}", clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
 	
-	rename *, lower
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -212,17 +195,16 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-*** YVES: high level of not classified
-
 gen ilo_edu_isced97=.
 		replace ilo_edu_isced97=1 if lf20==2                                                             // X - No schooling
-		replace ilo_edu_isced97=2 if inlist(lf23,95,96)                                                // 0 - Pre-primary education
-		replace ilo_edu_isced97=3 if inrange(lf23,1,8)                                                 // 1 - Primary education or first stage of basic education
-		replace ilo_edu_isced97=4 if inrange(lf23,9,10)                                                 // 2 - Lower secondary or second stage of basic education
-		replace ilo_edu_isced97=5 if inrange(lf23,11,22)                                                // 3 - Upper secondary education
-		*replace ilo_edu_isced97=6 if inrange(lf23,23,32)                                               // 4 - Post-secondary non-tertiary education
-		replace ilo_edu_isced97=7 if inrange(lf23,23,24)                                                // 5 - First stage of tertiary education
- 		replace ilo_edu_isced97=8 if lf23==25                                                           // 6 - Second stage of tertiary education
+		replace ilo_edu_isced97=2 if lf21==95                                                           // 0 - Pre-primary education
+		replace ilo_edu_isced97=3 if inrange(lf21,1,8)                                                 // 1 - Primary education or first stage of basic education
+		replace ilo_edu_isced97=4 if inrange(lf21,9,10)                                                 // 2 - Lower secondary or second stage of basic education
+		replace ilo_edu_isced97=5 if inrange(lf21,11,22)                                                // 3 - Upper secondary education
+		*replace ilo_edu_isced97=6 if inrange(lf21,23,32)                                               // 4 - Post-secondary non-tertiary education
+		replace ilo_edu_isced97=7 if inrange(lf21,23,24)                                                // 5 - First stage of tertiary education
+ 		replace ilo_edu_isced97=8 if lf21==25                                                           // 6 - Second stage of tertiary education
+		replace ilo_edu_isced97=9 if inlist(lf21,96,99)                                                 // UNK - Level not stated
         replace ilo_edu_isced97=9 if ilo_edu_isced97 == .                                                // UNK - Level not stated
 		 
      
@@ -248,7 +230,35 @@ gen ilo_edu_isced97=.
 			label val ilo_edu_aggregate edu_aggr_lab
 			label var ilo_edu_aggregate "Education (Aggregate level)"
 
- 
+ * ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: marital status is asked to the population aged above 9 years.  
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if lf25==1                                   // Single
+		replace ilo_mrts_details=2 if lf25==2                                   // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if lf25==4                                   // Widowed
+		replace ilo_mrts_details=5 if inlist(lf25,3,5)                          // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+			
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -256,7 +266,7 @@ gen ilo_edu_isced97=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
  /*
- **Comment: no info >> therefore it is not possible to compute NEET
+ **Comment: no info >> therefore, it is not possible to compute NEET
 gen ilo_edu_attendance = .
 		replace ilo_edu_attendance = 1 if  lf213==1                                                                  // 1 - Attending
 		replace ilo_edu_attendance = 2 if inlist(lf213,2,3)                                                             //  2 - Not attending
@@ -265,6 +275,8 @@ gen ilo_edu_attendance = .
 			lab val ilo_edu_attendance edu_attendance_lab
 			lab var ilo_edu_attendance "Education (Attendance)"
 */
+
+
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')  
@@ -308,18 +320,15 @@ gen ilo_dsb_aggregate = .
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-** DOUBT: they consider people in employment those who are woking more than 4hours/week
-
 * Comment: ** - The WAP in Ethiopia starts in 10 years, however all the questions related to economic activity are asked to 
 *               people from 5 yr-old [T2:239_T3:89]
 
-** doubt people in employment
 	gen ilo_lfs=.
 		replace ilo_lfs=1 if lf28==1 & !inlist(lf29,0,99) & ilo_wap==1 // employed (people at work, people who worked at least 1 hour in the last week)
 		replace ilo_lfs=1 if inrange(lf34,1,3) & ilo_wap==1 // employed (people not at work - temporary absent)
 		
  		replace ilo_lfs=2 if ilo_lfs!=1 & (lf56==1 & lf59==1) & ilo_wap==1  // unemployed (those who looked for job last weekend were available)	
-		replace ilo_lfs=2 if ilo_lfs!=1 &  lf58==6 & ilo_wap==1  // Future job starters
+		replace ilo_lfs=2 if ilo_lfs!=1 & (lf58==6 & lf59==1) & ilo_wap==1  // Future job starters
 		replace ilo_lfs=3 if !inlist(ilo_lfs,1,2)
 		replace ilo_lfs=. if ilo_wap!=1	
 				label define label_ilo_lfs 1 "Employed" 2 "Unemployed" 3 "Outside Labour Force"
@@ -354,14 +363,11 @@ gen ilo_mjh=.
 * -------------------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------------------- 
 
-*** Yves: according to the ILO standards (either 19th or 13th-point 144) category 11 (apprentice) 
-**        is not considered as people in employment because they don't reveice any pay (lf311 lf313).
-**        however when I cross lf311 with ilo_lfs they are apparently working
 
 	* MAIN JOB
 		
 		gen ilo_job1_ste_icse93=.
-			replace ilo_job1_ste_icse93=1 if inrange(lf39,1,6) // 1 - Employees
+			replace ilo_job1_ste_icse93=1 if inrange(lf39,1,6) | lf39==11  // 1 - Employees
 			replace ilo_job1_ste_icse93=2 if lf39==10  // 2 - Employers
 			replace ilo_job1_ste_icse93=3 if lf39==8  // 3 - Own-account workers
 			replace ilo_job1_ste_icse93=4 if lf39==7     // 4 - Members of producers' cooperatives
@@ -584,8 +590,7 @@ gen ilo_mjh=.
 			
 	* Secondary occupation
 	
-	** Comment with Yves
-	
+ 	
 			*** Commnet: No information available. 
 	
  
@@ -673,8 +678,7 @@ gen ilo_mjh=.
 
 *** MAIN JOB
 
- ** REVISAR ESTE RESULTADO (DA LO CONTRARIO A 2013)
- 
+** revise 
 gen ilo_job1_job_contract=.
 
 		replace ilo_job1_job_contract = 1 if  lf40 == 1  & ilo_job1_ste_aggregate==1 // 1 - Permanent
@@ -685,8 +689,7 @@ gen ilo_job1_job_contract=.
 			    lab var ilo_job1_job_contract "Job (Type of contract)"
 
  
- **** ME HE QUEDADO POR AQUI
- 
+  
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Informal/Formal economy: Unit of production ('ilo_job1_ife_prod')   
@@ -711,9 +714,9 @@ gen ilo_job1_job_contract=.
 			
  			   replace ilo_job1_ife_prod=3 if ilo_lfs==1 & (ilo_job1_eco_isic3_2digits==95 | ilo_job1_ocu_isco88_2digits==62)
  				
- 				replace ilo_job1_ife_prod=2 if ilo_lfs==1 & (inrange(lf39,1,6) | (!inrange(lf39,1,6)   & lf46b==1) | (!inrange(lf39,1,6)   & lf46b!=1 & lf46c==1))
+ 				replace ilo_job1_ife_prod=2 if ilo_lfs==1 & (inlist(lf39,1,2,4) | (!inlist(lf39,1,2,4)   & lf46b==1) | (!inlist(lf39,1,2,4) & lf46b!=1 & lf46c==1))
  											  
-			    replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,3,2) &  !inrange(lf39,1,6) & lf46b!=1 & lf46c!=1
+			    replace ilo_job1_ife_prod=1 if ilo_lfs==1 & !inlist(ilo_job1_ife_prod,3,2) &  !inlist(lf39,1,2,4) & lf46b!=1 & lf46c!=1
 				                               
 				        lab def ilo_ife_prod_lab 1 "1 - Informal" 2 "2 - Formal" 3 "3 - Household" 
 						lab val ilo_job1_ife_prod ilo_ife_prod_lab
@@ -728,7 +731,7 @@ gen ilo_job1_job_contract=.
 
 *** Comment: for employees and workers not classified by status, we do not have information on Social Security
 	
-	** therefore I think that this variable is not possible to compute
+	** therefore this variable is not possible to compute
 	/*
 * 2) NATURE OF JOB: FORMAL/INFORMAL EMPLOYMENT
 	
@@ -866,52 +869,6 @@ gen ilo_job1_job_contract=.
 ** COMMENT: This variable cannot be computed because most of the observations are unclassified. 
 ** In this years this is listed in categories that are different to ISIC 
 
-*** ISIC Rev.4
-
-** Comment: There is only information at 1-digit level for previous economic activity		
-
-
-		
-   * 1-digit level
-    gen ilo_preveco_isic4 = .
-	    replace ilo_preveco_isic4=1 if lf505==1 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=2 if lf505==2 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=3 if lf505==3 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=4 if lf505==4 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=5 if lf505==5 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=6 if lf505==6 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=7 if lf505==7 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=8 if lf505==8 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=9 if lf505==9 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=10 if lf505==10 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=11 if lf505==11 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=12 if lf505==12 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=13 if lf505==13 & ilo_cat_une==1		
-	    replace ilo_preveco_isic4=14 if lf505==14 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=15 if lf505==15 & ilo_cat_une==1
-        replace ilo_preveco_isic4=16 if lf505==16 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=17 if lf505==17 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=18 if lf505==18 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=19 if lf505==19 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=20 if lf505==20 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=21 if lf505==21 & ilo_cat_une==1
-	    replace ilo_preveco_isic4=22 if ilo_preveco_isic4==. & ilo_cat_une == 1
-   	  		    lab val ilo_preveco_isic4 eco_isic4
-			    lab var ilo_preveco_isic4 "Previous economic activity (ISIC Rev. 4)"
-
-   * Aggregate level
-   gen ilo_preveco_aggregate = .
-	   replace ilo_preveco_aggregate=1 if ilo_preveco_isic4==1
-	   replace ilo_preveco_aggregate=2 if ilo_preveco_isic4==3
-	   replace ilo_preveco_aggregate=3 if ilo_preveco_isic4==6
-	   replace ilo_preveco_aggregate=4 if inlist(ilo_preveco_isic4,2,4,5)
-	   replace ilo_preveco_aggregate=5 if inrange(ilo_preveco_isic4,7,14)
-	   replace ilo_preveco_aggregate=6 if inrange(ilo_preveco_isic4,15,21)
-	   replace ilo_preveco_aggregate=7 if ilo_preveco_isic4==22
- 			   lab val ilo_preveco_aggregate eco_aggr_lab
-			   lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
-
-
 				
 				
 * -------------------------------------------------------------------------------------------
@@ -923,50 +880,7 @@ gen ilo_job1_job_contract=.
 ** COMMENT: This variable cannot be computed because most of the observations are unclassified. 
 
 
-*** ISCO - 08
 
- 	  * 1-digit level
-	gen ilo_prevocu_isco08 =.
-		replace ilo_prevocu_isco08 = 1 if lf504==1 & ilo_cat_une==1  // "1 - Managers"
-		replace ilo_prevocu_isco08 = 2 if lf504==2 & ilo_cat_une==1  // "2 - Professional"
-		replace ilo_prevocu_isco08 = 3 if lf504==3 & ilo_cat_une==1  // "3 - Technicians and associate professionals"
-		replace ilo_prevocu_isco08 = 4 if lf504==4 & ilo_cat_une==1  // "4 - Clerical support workers"
-		replace ilo_prevocu_isco08 = 5 if lf504==5 & ilo_cat_une==1  // "5 - Service and sales workers"
-		replace ilo_prevocu_isco08 = 6 if lf504==6  & ilo_cat_une==1  // "6 - Skilled agricultural, forestry and fishery workers"
-        replace ilo_prevocu_isco08 = 7 if lf504==7  & ilo_cat_une==1  // "7 - Craft and related trades workers"
-        replace ilo_prevocu_isco08 = 8 if lf504==8  & ilo_cat_une==1  // "8 - Plant and machine operators, and assemblers"
-        replace ilo_prevocu_isco08 = 9 if lf504==9  & ilo_cat_une==1  // "9 - Elementary occupations"
-       * replace ilo_prevocu_isco08 = 10 if lf504==  & ilo_cat_une==1  // "0 - Armed forces occupations"
-		replace ilo_prevocu_isco08 = 11 if ilo_prevocu_isco08==.  & ilo_cat_une==1  // "X - Not elsewhere classified"
-		
-		 
-
- 				lab val ilo_prevocu_isco08 ocu08_1digits
-				lab var ilo_prevocu_isco08 "Previous occupation (ISCO-08)"
-				
-				
-	* Aggregate:			
-    gen ilo_prevocu_aggregate=.
-	    replace ilo_prevocu_aggregate=1 if inrange(ilo_prevocu_isco08,1,3)   
-	    replace ilo_prevocu_aggregate=2 if inlist(ilo_prevocu_isco08,4,5)
-	    replace ilo_prevocu_aggregate=3 if inlist(ilo_prevocu_isco08,6,7)
-	    replace ilo_prevocu_aggregate=4 if ilo_prevocu_isco08==8
-	    replace ilo_prevocu_aggregate=5 if ilo_prevocu_isco08==9
-	    replace ilo_prevocu_aggregate=6 if ilo_prevocu_isco08==10
-	    replace ilo_prevocu_aggregate=7 if ilo_prevocu_isco08==11
- 
-                lab val ilo_prevocu_aggregate ocu_aggr_lab
-			    lab var ilo_prevocu_aggregate "Previous occupation (Aggregate)"	
-		
-	* Skill level
-	gen ilo_prevocu_skill=.
-	    replace ilo_prevocu_skill=1 if ilo_prevocu_isco08==9                   // Low
-		replace ilo_prevocu_skill=2 if inlist(ilo_prevocu_isco08,4,5,6,7,8)    // Medium
-		replace ilo_prevocu_skill=3 if inlist(ilo_prevocu_isco08,1,2,3)        // High
-		replace ilo_prevocu_skill=4 if inlist(ilo_prevocu_isco08,10,11)        // Not elsewhere classified
- 
-                lab val ilo_prevocu_skill ocu_skill_lab
-			    lab var ilo_prevocu_skill "Previous occupation occupation (Skill level)"
 		  
 */
 
@@ -1004,11 +918,6 @@ gen ilo_job1_job_contract=.
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-
-** Yves:
-* - 7. Possibility to rejoin my previous work? OTH LM??
-* - 4. Old age/Pension: Is this considered as DNN/want to work?? (or LM-too old))
-* - 11. Remittance: DNN/want to work?
 
 gen ilo_olf_reason = .
 			replace ilo_olf_reason = 1 if (inrange(lf58,8,10) & ilo_lfs==3)   		// Labour market

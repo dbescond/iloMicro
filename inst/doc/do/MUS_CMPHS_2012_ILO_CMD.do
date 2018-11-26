@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Mauritius, 2012
 * DATASET USED: Mauritius, CMPHS, 2012
 * NOTES: 
-* Files created: Standard variables MUS_CMPHS_2013_FULL.dta and MUS_CMPHS_2013_ILO.dta
+* Files created: Standard variables MUS_CMPHS_2012_FULL.dta and MUS_CMPHS_2012_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 15 May 2018
-* Last updated: 15 May 2018
+* Last updated: 28 May 2018
 ********************************************************************************
 
 ********************************************************************************
@@ -831,7 +831,13 @@ cd "$inpath"
 	    replace ilo_job1_lri_ees = income if ilo_job1_ste_aggregate==1
 	    replace ilo_job1_lri_ees = . if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
-			
+				
+	* Self-employed
+	gen ilo_job1_lri_slf = .
+	    replace ilo_job1_lri_slf = income if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf = . if ilo_job1_lri_slf==99999 | ilo_lfs!=1
+		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"				
+											
 * ------------------------------------------------------------------------------
 ********************************************************************************
 *                                                                              *

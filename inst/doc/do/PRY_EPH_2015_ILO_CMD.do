@@ -2,9 +2,9 @@
 * DATASET USED: BOL HS 2014
 * NOTES:
 * Author: Roger Gomis
-* Who last updated the file: Roger Gomis
+
 * Starting Date: 20 February 2017
-* Last updated: 22 February 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,7 +20,7 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "PRY"
 global source "EPH"
 global time "2015"
@@ -30,63 +30,14 @@ global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-* note to work it requires to run (on a one time basis):
-
-/*
-set httpproxyhost proxy.ilo.org
-set httpproxyport 3128
-set httpproxy on
-
-ssc install labutil
-	*/
-cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				
-				drop code_label* code_level
-			
-			save "`labels'"
-
-
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
-* 			Load original dataset
-*---------------------------------------------------------------------------------------------
-*---------------------------------------------------------------------------------------------
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-
-	use ${inputFile}, clear	
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
+	
 		
 * to ensure that no observations are added
 gen original=1
@@ -114,7 +65,7 @@ if ${time} > 2013   {
 	if ${time} == 2014   {
 	replace ed08=20 if ed08==18
 	}
-	if ${time} == 2015   {
+	if ${time} >= 2015   {
 	replace ed08=20 if ed08==19
 	}
 	
@@ -177,6 +128,33 @@ if ${time} ==2009  {
  rename ed54 ed0504
  
  replace ed0504=ed0504+200 if ed0504>1600&ed0504<8888
+}
+
+if ${time} ==2008  {
+
+ 
+ foreach var of varlist b13g-b27 {
+ rename `var' test_`var'
+ }
+ 
+ rename test_b27 b31
+ rename test_b13t b16t
+ rename test_b24 b28
+ rename test_b25 b29
+ 
+ rename c13 c18
+ 
+ rename ed54 ed0504
+ rename ed06 ed06c
+ replace ed0504=ed0504+200 if ed0504>1600&ed0504<8888
+ 
+rename ed08 ed08_old
+rename ed10 ed08
+	
+	replace b06=. if b06==0
+	replace c03=. if c03==0
+	replace c18=.  if c18==0
+
 }
 
 
@@ -311,7 +289,7 @@ if ${time} ==2009  {
 
 /* based on the mapping developped by UNESCO 
 					http://www.uis.unesco.org/Education/ISCEDMappings/Pages/default.aspx
-					file:file:///J:\COMMON\STATISTICS\DPAU\MICRO\PRY\HS\2015\ORI\paraguay_isced_mapping_0.xls	
+					file:file:///J:\DPAU\MICRO\PRY\HS\2015\ORI\paraguay_isced_mapping_0.xls	
 The question ed06c has been used as well in conjunction with the file above to determine the cuttofs for superior education
 For doctorates it is explicitly used					
 					
@@ -352,11 +330,40 @@ recode ed0504 (0=1) (101=2) (102=2) (103=2) (104=2) (105=2) (106=3) (107=3) (108
 	gen ilo_edu_attendance=.
 		replace ilo_edu_attendance=1 if ed08<20			// Attending
 		replace ilo_edu_attendance=2 if ed08==20				// Not attending
-			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending"
+		replace ilo_edu_attendance=3 if ilo_edu_attendance==.
+			label def edu_att_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Unkown"
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
 
-			
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p09==5                                    // Single
+		replace ilo_mrts_details=2 if p09==1                                    // Married
+		replace ilo_mrts_details=3 if p09==2                                    // Union / cohabiting
+		replace ilo_mrts_details=4 if p09==4                                    // Widowed
+		replace ilo_mrts_details=5 if inlist(p09,3,6)                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -481,11 +488,11 @@ count
 		replace ilo_job1_eco_aggregate=6 if inlist(b02rec,8)
 		replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_aggregate==.
 		replace ilo_job1_eco_aggregate=. if ilo_lfs!=1
-			lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-								5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-								6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+		    lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+								     5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+								     6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
 			lab val ilo_job1_eco_aggregate eco_aggr_lab
-			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate)"
+			lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
 		
 		*****************************************************
@@ -503,8 +510,10 @@ count
 		replace ilo_job2_eco_aggregate=6 if inlist(c02rec,8)
 		replace ilo_job2_eco_aggregate=7 if ilo_job2_eco_aggregate==.
 		replace ilo_job2_eco_aggregate=. if (ilo_lfs!=1|ilo_mjh!=2)
-			lab val ilo_job2_eco_aggregate eco_aggr_lab
-			lab var ilo_job2_eco_aggregate "Economic activity (Aggregate)"
+               * labels already defined for main job
+	           lab val ilo_job2_eco_aggregate eco_aggr_lab
+			   lab var ilo_job2_eco_aggregate "Economic activity (Aggregate) - second job"				
+
 
 			
 				
@@ -527,11 +536,11 @@ count
 				replace ilo_job1_ocu_isco08=10 if ilo_job1_ocu_isco08==0
 				replace ilo_job1_ocu_isco08=11 if (ilo_job1_ocu_isco08==.|ilo_job1_ocu_isco08>10 & ilo_lfs==1)
 				replace ilo_job1_ocu_isco08=. if ilo_lfs!=1
-					lab def isco08_1dig_lab 1 "1 - Managers" 2 "2 - Professionals" 3 "Technicians and associate professionals" 4 "4 - Clerical support workers" 5 "5 - Service and sales workers" ///
-									6 "6 - Skilled agricultural, forestry and fishery workers" 7 "7 - Craft and related trades workers" 8 "8 - Plant and machine operators, and assemblers" ///
-									9 "9 - Elementary occupations" 10 "0 - Armed forces occupations" 11 "X - Not elsewhere classified"
-					lab val ilo_job1_ocu_isco08 isco08_1dig_lab
-					lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08)"		
+					lab def ocu_isco08_1digit 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
+                                          5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
+					lab val ilo_job1_ocu_isco08 ocu_isco08_1digit
+					lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08) - main job"	
 
 		* Aggregate:			
 			gen ilo_job1_ocu_aggregate=.
@@ -543,16 +552,16 @@ count
 				replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco08==10
 				replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco08==11
 					lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
-										4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
+				 					 4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
 					lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - Main job"	
+					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
 					
 					
 		* Skill level
 		recode ilo_job1_ocu_isco08 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_job1_ocu_skill)
-		lab def ilo_job1_ocu_skill 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
-		lab val ilo_job1_ocu_skill ilo_job1_ocu_skill
-		lab var ilo_job1_ocu_skill "Occupation (Skill level)"
+				lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
+			    lab val ilo_job1_ocu_skill ocu_skill_lab
+			    lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
 
 
 
@@ -759,7 +768,7 @@ drop TOTAL_TIME TIME_* HOURS_* MINUTES_*
 
 		
 * 2) Weekly hours USUALLY worked , notice that it has to be obtained as a differential
-			gen ilo_job1_how_usual=b06 if ilo_lfs==1&b06<999
+			gen ilo_job1_how_usual=b06 if ilo_lfs==1&b06<999 
 			replace ilo_job1_how_usual=ilo_job1_how_actual if ilo_lfs==1 & ilo_job1_how_usual==.
 					lab var ilo_job1_how_usual "Weekly hours usually worked in main job"
 					
@@ -872,15 +881,11 @@ drop TOTAL_TIME TIME_* HOURS_* MINUTES_*
 	replace todrop=. if todrop==0
 	
 	
-	gen todropB1=a11m 
-	gen todropB2=a11s/4.33
-	gen todropB3=a11a *12
-	egen todropB=rowtotal(todropB*)
-	replace todropB=. if todropB==0
+
 	
 	* Seeking or without employment, whichever is shorter
 	*using as a base seeking due to scope
-	replace todrop=todropB if todropB<todrop
+
 	
 	gen ilo_dur_details=.
 				replace ilo_dur_details=1 if (todrop<1 & ilo_lfs==2)
@@ -921,8 +926,9 @@ drop TOTAL_TIME TIME_* HOURS_* MINUTES_*
 		replace ilo_preveco_aggregate=6 if inlist(a14rec,8)
 		replace ilo_preveco_aggregate=7 if ilo_preveco_aggregate==.
 		replace ilo_preveco_aggregate=. if (ilo_lfs!=2|ilo_cat_une!=1)
-			lab val ilo_preveco_aggregate eco_aggr_lab
-			lab var ilo_preveco_aggregate "Economic activity (Aggregate)"
+                * labels already defined for main job
+		        lab val ilo_preveco_aggregate eco_aggr_lab
+			    lab var ilo_preveco_aggregate "Previous economic activity (Aggregate)"
 	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -935,8 +941,11 @@ drop TOTAL_TIME TIME_* HOURS_* MINUTES_*
 				replace ilo_prevocu_isco08=10 if ilo_prevocu_isco08==0
 				replace ilo_prevocu_isco08=11 if ((ilo_prevocu_isco08==. | ilo_prevocu_isco08>10) & (ilo_lfs==2&ilo_cat_une==1))
 				replace ilo_prevocu_isco08=. if (ilo_lfs!=2|ilo_cat_une!=1)
-					lab val ilo_prevocu_isco08 isco08_1dig_lab
-					lab var ilo_prevocu_isco08 "Occupation (ISCO-08)"		
+					* labels already defined for main job
+						lab val ilo_prevocu_isco08 ocu_isco08_1digit
+						lab var ilo_prevocu_isco08 "Previous occupation (ISCO-08)"
+				
+		
 
 		* Aggregate:			
 			gen ilo_prevocu_aggregate=.
@@ -947,14 +956,16 @@ drop TOTAL_TIME TIME_* HOURS_* MINUTES_*
 				replace ilo_prevocu_aggregate=5 if ilo_prevocu_isco08==9
 				replace ilo_prevocu_aggregate=6 if ilo_prevocu_isco08==10
 				replace ilo_prevocu_aggregate=7 if ilo_prevocu_isco08==11
-					lab val ilo_prevocu_aggregate ocu_aggr_lab
-					lab var ilo_prevocu_aggregate "Occupation (Aggregate) - Main job"	
+					* labels already defined for main job
+						lab val ilo_prevocu_aggregate ocu_aggr_lab
+						lab var ilo_prevocu_aggregate "Previous occupation (Aggregate)"	
 					
 					
 		* Skill level
 		recode ilo_prevocu_isco08 (1/3=3) (4/8=2) (9=1) (10/11=4) ,gen(ilo_prevocu_skill)
-		lab val ilo_prevocu_skill ilo_job1_ocu_skill
-		lab var ilo_prevocu_skill "Occupation (Skill level)"
+                * labels already defined for main job
+			    lab val ilo_prevocu_skill ocu_skill_lab
+			    lab var ilo_prevocu_skill "Previous occupation (Skill level)"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------

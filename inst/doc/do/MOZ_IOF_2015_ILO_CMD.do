@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Mozambique, 2014/15
-* DATASET USED: Mozambique - Inquérito aos orçamentos familiares(IOF) - 2014/15
+* DATASET USED: Mozambique - InquÃ©rito aos orÃ§amentos familiares(IOF) - 2014/15
 * NOTES:
-* Authors: DPAU
-* Who last updated the file: DPAU
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 8 December 2017
-* Last updated: 8 December 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,12 +20,11 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "MOZ"
 global source "IOF"
 global time "2015"
-global input_file "MOZ_IOF_2015"
-
+global inputFile "MOZ_IOF_2015.dta"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
@@ -40,8 +39,9 @@ global outpath "${path}\\${country}\\${source}\\${time}"
 ********************************************************************************************
 
 cd "$inpath"
-	use "${input_file}", clear
-		rename *, lower
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	rename *, lower  
 
 
 ***********************************************************************************************
@@ -225,6 +225,36 @@ cd "$inpath"
 
 * Not available
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: marital status question is made to people aged 14 years and above
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if af07==1                                   // Single
+		replace ilo_mrts_details=2 if af07==2                                   // Married
+		replace ilo_mrts_details=3 if af07==3                                   // Union / cohabiting
+		replace ilo_mrts_details=4 if af07==5                                   // Widowed
+		replace ilo_mrts_details=5 if af07==4                                   // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')

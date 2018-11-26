@@ -242,6 +242,37 @@ cd "$inpath"
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if p06==6                                          // Single
+		replace ilo_mrts_details=2 if p06==1                                          // Married
+		replace ilo_mrts_details=3 if p06==5                                           // Union / cohabiting
+		replace ilo_mrts_details=4 if p06==4                                           // Widowed
+		replace ilo_mrts_details=5 if inlist(p06,2,3)                                  // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                  // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+				
+				
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -368,8 +399,7 @@ cd "$inpath"
 
 	  * Secondary activity
 	  
-		* don't defines variables for the moment
-		
+ 		
 			gen ilo_job2_ste_icse93=.
 				replace ilo_job2_ste_icse93=1 if inlist(p54,1,2,3,4,10)
 				replace ilo_job2_ste_icse93=2 if p54==5
@@ -392,6 +422,7 @@ cd "$inpath"
 					lab val ilo_job2_ste_aggregate ste_aggr_lab
 				label var ilo_job2_ste_aggregate "Status in employment (Aggregate) in secondary job" 
 				
+		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Economic activity ('ilo_eco')  
@@ -401,6 +432,9 @@ cd "$inpath"
 * Comment:  ISIC Rev. 4.1 being used and initially indicated on 4-digits level --> keep only 2 digits level
 
  
+	*************
+    * MAIN JOB:
+    *************
 	
     *---------------------------------------------------------------------------
 	* ISIC REV 4

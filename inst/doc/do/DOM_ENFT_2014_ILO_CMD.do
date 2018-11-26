@@ -1,11 +1,11 @@
-* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Dominican Republic, October 2014
-* DATASET USED: Dominican Republic LFS 2014 Q4
+* TITLE OF DO FILE: ILO Microdata Preprocessing code template - Dominican Republic ENFT
+* DATASET USED: DOM_ENFT_
 * NOTES: 
-* Files created: Standard variables on ENFT Dominican Republic 2014 Q4
-* Authors: Mabelin Villarreal Fuentes
-* Who last updated the file: Mabelin Villarreal Fuentes
-* Starting Date: 22 September 2016
-* Last updated: 25 September 2017
+* Files created: Standard variables on ENFT Dominican Republic
+* Authors: ILO / Department of Statistics / DPAU
+
+* Starting Date: 14 September 2016
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "DOM"
 global source "ENFT"
 global time "2014"
@@ -30,47 +30,6 @@ global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-			* Destring codes
-			destring code_level, replace
-			* Reshape
-				    foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
 *********************************************************************************************
 
 * Load original dataset
@@ -209,7 +168,7 @@ if (`Y'<=2012){
 *			Age ('ilo_age') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - Age above 99 not indicated, highest value corresponds to "99 y más (99 and more)"
+* Comment: - Age above 99 not indicated, highest value corresponds to "99 y mÃƒ¡s (99 and more)"
 
 	gen ilo_age=.
 	if (`Y'>=2013){
@@ -471,9 +430,6 @@ if (`Y'<=2012){
 * -------------------------------------------------------------------------------------------
 * Comment: - According to the national report, the original classification follows ISIC Rev.
 *            3.1 at 3-digits level.
-    	
-	append using `labels', gen (lab)
-	*use value label from this variable, afterwards drop everything related to this append
 	
 	gen indu_code_prim=.
     if (`Y'>=2013){
@@ -486,7 +442,23 @@ if (`Y'<=2012){
 	
 	* MAIN JOB:
 	gen ilo_job1_eco_isic3_2digits=indu_code_prim if ilo_lfs==1
-        lab values ilo_job1_eco_isic3_2digits isic3_2digits
+        lab def eco_isic3_2digits 1 "01 - Agriculture, hunting and related service activities"	2 "02 - Forestry, logging and related service activities"	5 "05 - Fishing, operation of fish hatcheries and fish farms; service activities incidental to fishing"	10 "10 - Mining of coal and lignite; extraction of peat"	///
+                                 11 "11 - Extraction of crude petroleum and natural gas; service activities incidental to oil and gas extraction excluding surveying"	12 "12 - Mining of uranium and thorium ores"	13 "13 - Mining of metal ores"	14 "14 - Other mining and quarrying"	///
+                                 15 "15 - Manufacture of food products and beverages"	16 "16 - Manufacture of tobacco products"	17 "17 - Manufacture of textiles"	18 "18 - Manufacture of wearing apparel; dressing and dyeing of fur"	///
+                                 19 "19 - Tanning and dressing of leather; manufacture of luggage, handbags, saddlery, harness and footwear"	20 "20 - Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials"	21 "21 - Manufacture of paper and paper products"	22 "22 - Publishing, printing and reproduction of recorded media"	///
+                                 23 "23 - Manufacture of coke, refined petroleum products and nuclear fuel"	24 "24 - Manufacture of chemicals and chemical products"	25 "25 - Manufacture of rubber and plastics products"	26 "26 - Manufacture of other non-metallic mineral products"	///
+                                 27 "27 - Manufacture of basic metals"	28 "28 - Manufacture of fabricated metal products, except machinery and equipment"	29 "29 - Manufacture of machinery and equipment n.e.c."	30 "30 - Manufacture of office, accounting and computing machinery"	///
+                                 31 "31 - Manufacture of electrical machinery and apparatus n.e.c."	32 "32 - Manufacture of radio, television and communication equipment and apparatus"	33 "33 - Manufacture of medical, precision and optical instruments, watches and clocks"	34 "34 - Manufacture of motor vehicles, trailers and semi-trailers"	///
+                                 35 "35 - Manufacture of other transport equipment"	36 "36 - Manufacture of furniture; manufacturing n.e.c."	37 "37 - Recycling"	40 "40 - Electricity, gas, steam and hot water supply"	///
+                                 41 "41 - Collection, purification and distribution of water"	45 "45 - Construction"	50 "50 - Sale, maintenance and repair of motor vehicles and motorcycles; retail sale of automotive fuel"	51 "51 - Wholesale trade and commission trade, except of motor vehicles and motorcycles"	///
+                                 52 "52 - Retail trade, except of motor vehicles and motorcycles; repair of personal and household goods"	55 "55 - Hotels and restaurants"	60 "60 - Land transport; transport via pipelines"	61 "61 - Water transport"	///
+                                 62 "62 - Air transport"	63 "63 - Supporting and auxiliary transport activities; activities of travel agencies"	64 "64 - Post and telecommunications"	65 "65 - Financial intermediation, except insurance and pension funding"	///
+                                 66 "66 - Insurance and pension funding, except compulsory social security"	67 "67 - Activities auxiliary to financial intermediation"	70 "70 - Real estate activities"	71 "71 - Renting of machinery and equipment without operator and of personal and household goods"	///
+                                 72 "72 - Computer and related activities"	73 "73 - Research and development"	74 "74 - Other business activities"	75 "75 - Public administration and defence; compulsory social security"	 ///
+                                 80 "80 - Education"	85 "85 - Health and social work"	90 "90 - Sewage and refuse disposal, sanitation and similar activities"	91 "91 - Activities of membership organizations n.e.c."	 ///
+                                 92 "92 - Recreational, cultural and sporting activities"	93 "93 - Other service activities"	95 "95 - Activities of private households as employers of domestic staff"	96 "96 - Undifferentiated goods-producing activities of private households for own use"	 ///
+                                 97 "97 - Undifferentiated service-producing activities of private households for own use"	99 "99 - Extra-territorial organizations and bodies"			
+        lab val ilo_job1_eco_isic3_2digits eco_isic3_2digits								 
         lab var ilo_job1_eco_isic3_2digits "Economic activity (ISIC Rev. 3.1), 2 digits levels - main job"
 
 	* 1 digit-level
@@ -509,7 +481,12 @@ if (`Y'<=2012){
 		replace ilo_job1_eco_isic3=16 if ilo_job1_eco_isic3_2digits==95
 		replace ilo_job1_eco_isic3=17 if ilo_job1_eco_isic3_2digits==99
 		replace ilo_job1_eco_isic3=18 if ilo_job1_eco_isic3_2digits==. & ilo_lfs==1
-			    lab val ilo_job1_eco_isic3 isic3
+		        lab def eco_isic3_1digit 1 "A - Agriculture, hunting and forestry"	2 "B - Fishing"	3 "C - Mining and quarrying"	4 "D - Manufacturing"	///
+                                         5 "E - Electricity, gas and water supply"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles, motorcycles and personal and household goods"	8 "H - Hotels and restaurants"	///
+                                         9 "I - Transport, storage and communications"	10 "J - Financial intermediation"	11 "K - Real estate, renting and business activities"	12 "L - Public administration and defence; compulsory social security"	///
+                                         13 "M - Education"	14 "N - Health and social work"	15 "O - Other community, social and personal service activities"	16 "P - Activities of private households as employers and undifferentiated production activities of private households"	///
+                                         17 "Q - Extraterritorial organizations and bodies"	18 "X - Not elsewhere classified"			
+			    lab val ilo_job1_eco_isic3 eco_isic3_1digit
 			    lab var ilo_job1_eco_isic3 "Economic activity (ISIC Rev. 3.1) - main job "
 
 	* Aggregate level	
@@ -548,7 +525,14 @@ if (`Y'<=2012){
 		
 	* MAIN JOB		
 	gen ilo_job1_ocu_isco88_2digits=occ_code_prim if ilo_lfs==1
-		lab values ilo_job1_ocu_isco88_2digits isco88_2digits
+	    lab def ocu88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers" ///
+                              21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals" ///
+                              31 "31 - Physical and engineering science associate professionals"	32 "32 - Life science and health associate professionals"	33 "33 - Teaching associate professionals"	34 "34 - Other associate professionals" ///
+                              41 "41 - Office clerks"	42 "42 - Customer services clerks"	51 "51 - Personal and protective services workers"	52 "52 - Models, salespersons and demonstrators" ///
+                              61 "61 - Skilled agricultural and fishery workers"	62 "62 - Subsistence agricultural and fishery workers"	71 "71 - Extraction and building trades workers"	72 "72 - Metal, machinery and related trades workers" ///
+                              73 "73 - Precision, handicraft, craft printing and related trades workers"	74 "74 - Other craft and related trades workers"	81 "81 - Stationary plant and related operators"	82 "82 - Machine operators and assemblers" ///
+                              83 "83 - Drivers and mobile plant operators"	91 "91 - Sales and services elementary occupations"	92 "92 - Agricultural, fishery and related labourers"	93 "93 - Labourers in mining, construction, manufacturing and transport"
+		lab values ilo_job1_ocu_isco88_2digits ocu88_2digits
 		lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - main job"
 
     * One digit-level
@@ -556,7 +540,10 @@ if (`Y'<=2012){
 	    replace ilo_job1_ocu_isco88=11 if (ilo_job1_ocu_isco88_2digits==. & ilo_lfs==1)                           //Not elsewhere classified
 		replace ilo_job1_ocu_isco88=int(ilo_job1_ocu_isco88_2digits/10) if (ilo_job1_ocu_isco88==. & ilo_lfs==1)  //The rest of the occupations
 		replace ilo_job1_ocu_isco88=10 if (ilo_job1_ocu_isco88==0 & ilo_lfs==1)                                   //Armed forces
-				lab val ilo_job1_ocu_isco88 isco88
+	            lab def ocu88_1digit 1 "1 - Legislators, senior officials and managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals" 4 "4 - Clerks" ///
+                                     5 "5 - Service workers and shop and market sales workers"	6 "6 - Skilled agricultural and fishery workers"	7 "7 - Craft and related trades workers" 8	"8 - Plant and machine operators and assemblers" ///
+                                     9 "9 - Elementary occupations"	10 "0 - Armed forces"	11 "11 - Not elsewhere classified"
+				lab val ilo_job1_ocu_isco88 ocu88_1digit
 				lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88) - main job"
 			
 	* Aggregate:			
@@ -965,7 +952,7 @@ if (`Y'<=2012){
 	* ISIC Rev. 3 - 2 digit
 	gen ilo_preveco_isic3_2digits=.
 		replace ilo_preveco_isic3_2digits = indu_code_prim if ilo_lfs==2 & ilo_cat_une==1
-		        lab val ilo_preveco_isic3_2digits isic3_2digits
+		        lab val ilo_preveco_isic3_2digits eco_isic3_2digits
 		        lab var ilo_preveco_isic3_2digits "Previous economic activity (ISIC Rev. 3), 2 digit level"
 	
     * ISIC Rev. 3 - 1 digit				  
@@ -988,7 +975,7 @@ if (`Y'<=2012){
 		replace ilo_preveco_isic3=16 if ilo_preveco_isic3_2digits==95
 		replace ilo_preveco_isic3=17 if ilo_preveco_isic3_2digits==99
 		replace ilo_preveco_isic3=18 if inlist(ilo_preveco_isic3_2digits,0,.) & ilo_cat_une==1
-			    lab val ilo_preveco_isic3 isic3
+			    lab val ilo_preveco_isic3 eco_isic3_1digit
 			    lab var ilo_preveco_isic3 "Previous economic activity (ISIC Rev. 3)"
 	
     * Aggregate level
@@ -1014,7 +1001,7 @@ if (`Y'<=2012){
 
    * Two digit-level
    gen ilo_prevocu_isco88_2digits=occ_code_prim if ilo_lfs==2 & ilo_cat_une==1
-	   lab values ilo_prevocu_isco88_2digits isco88_2digits
+	   lab values ilo_prevocu_isco88_2digits ocu88_2digits
 	   lab var ilo_prevocu_isco88_2digits "Previous occupation (ISCO-88), 2 digit level"
 			
     * One digit-level
@@ -1022,7 +1009,7 @@ if (`Y'<=2012){
 	    replace ilo_prevocu_isco88=11 if ilo_prevocu_isco88_2digits==. & ilo_lfs==2 & ilo_cat_une==1                            //Not elsewhere classified
 		replace ilo_prevocu_isco88=int(ilo_prevocu_isco88_2digits/10) if (ilo_prevocu_isco88==. & ilo_lfs==2 & ilo_cat_une==1)  //The rest of the occupations
 		replace ilo_prevocu_isco88=10 if (ilo_prevocu_isco88==0 & ilo_lfs==2 & ilo_cat_une==1)                                  //Armed forces
-				lab val ilo_prevocu_isco88 isco88
+				lab val ilo_prevocu_isco88 ocu88_1digit
 				lab var ilo_prevocu_isco88 "Previous occupation (ISCO-88)"
 				
 	* Aggregate:			
@@ -1128,26 +1115,23 @@ if (`Y'<=2012){
 * 	Prepare final datasets
 * -------------------------------------------------------------
 cd "$outpath"
-        
-		/*Categories from temporal file deleted */
-		drop if lab==1 
 		
 		/*Only age bands used*/
 		drop ilo_age 
 		
 		/*Variables computed in-between*/
-		drop lab isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 isic3_2digits isic3
 		drop indu_code_prim occ_code_prim social_security monthly_earnings 
 		
 		compress 
 		
 	   /*Save dataset including original and ilo variables*/
-	
 		save ${country}_${source}_${time}_FULL,  replace		
 	
 	   /* Save file only containing ilo_* variables*/
-	
 		keep ilo*
 
 		save ${country}_${source}_${time}_ILO, replace
 		
+
+
+

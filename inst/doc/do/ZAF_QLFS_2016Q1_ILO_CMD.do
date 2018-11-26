@@ -2,9 +2,9 @@
 * DATASET USED: ZAF LFS 2016Q1
 * NOTES:
 * Author: Roger Gomis
-* Who last updated the file: Roger Gomis
+
 * Starting Date: 10 February 2017
-* Last updated: 20 February 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -20,11 +20,11 @@ clear all
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "ZAF"
 global source "QLFS"
 global time "2016Q1"
-global inputFile "qlfs-2016-01"
+global inputFile "QLFS!2016!01_F1"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
@@ -43,39 +43,6 @@ set httpproxy on
 ssc install labutil
 	*/
 cd "$temppath"
-		
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				
-				drop code_label* code_level
-			
-			save "`labels'"
 
 
 *---------------------------------------------------------------------------------------------
@@ -159,12 +126,11 @@ capture rename QTR Qtr
 *			Geographical coverage ('ilo_geo')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-
 decode ilo_time, gen(todrop)
 split todrop, generate(todrop_) parse(Q)
 destring todrop_1, replace force
 local Y = todrop_1 in 1
-	
+
 	capture rename   Geo_Type Geo_type
 	
 	gen ilo_geo=.
@@ -262,7 +228,7 @@ local Y
 
 /* ISCED 2011 mapping: based on the mapping developped by UNESCO 
 					http://www.uis.unesco.org/Education/ISCEDMappings/Pages/default.aspx
-					file:///J:\COMMON\STATISTICS\DPAU\MICRO\ZAF\LFS\2016Q1\ORI\ISCED_2011_Mapping_SouthAfrica_EN.xlsx	*/
+					file:///J:\DPAU\MICRO\ZAF\LFS\2016Q1\ORI\ISCED_2011_Mapping_SouthAfrica_EN.xlsx	*/
 
 * Note that according to the definition, the highest level CONCLUDED is considered.
 * also note that doctorate and masters are bunched together, the solution assumed is  doctorate-> master
@@ -359,6 +325,51 @@ else {
 }
 
 drop todrop*
+			
+			
+		
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if  Q16MARITALSTATUS == 5                    // Single
+		replace ilo_mrts_details=2 if  Q16MARITALSTATUS == 1                    // Married
+		replace ilo_mrts_details=3 if  Q16MARITALSTATUS == 2                    // Union / cohabiting
+		replace ilo_mrts_details=4 if  Q16MARITALSTATUS == 3                    // Widowed
+		replace ilo_mrts_details=5 if  Q16MARITALSTATUS == 4                    // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+							
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
 			
 /*		NOT AVAILABLE AS A GENERAL POPULATION QUESTION	
 * -------------------------------------------------------------------------------------------
@@ -478,7 +489,6 @@ drop todrop*
 /* IT DOES NOT FOLLOW ISIC 3.1 or 4, it is somewhat consistent with ISIC 3, a manual assignation is performed*/ 
 	
 
-	append using `labels'
 /*
 		* Use value label from this variable, afterwards drop everything related to this append
 					
@@ -677,8 +687,15 @@ drop todrop*
 			replace todrop=trunc(todrop/100)
 			gen ilo_job1_ocu_isco88_2digits=todrop if (ilo_lfs==1&Q42OCCUPATION!=9999)
 			
-				label values ilo_job1_ocu_isco88_2digits isco88_2digits
-				lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level"
+				lab def ocu_isco88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers"	///
+                                           21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals"	///
+                                           31 "31 - Physical and engineering science associate professionals"	32 "32 - Life science and health associate professionals"	33 "33 - Teaching associate professionals"	34 "34 - Other associate professionals"	///
+                                           41 "41 - Office clerks"	42 "42 - Customer services clerks"	51 "51 - Personal and protective services workers"	52 "52 - Models, salespersons and demonstrators"	///
+                                           61 "61 - Skilled agricultural and fishery workers"	62 "62 - Subsistence agricultural and fishery workers"	71 "71 - Extraction and building trades workers"	72 "72 - Metal, machinery and related trades workers"	///
+                                           73 "73 - Precision, handicraft, craft printing and related trades workers"	74 "74 - Other craft and related trades workers"	81 "81 - Stationary plant and related operators"	82 "82 - Machine operators and assemblers"	///
+                                           83 "83 - Drivers and mobile plant operators"	91 "91 - Sales and services elementary occupations"	92 "92 - Agricultural, fishery and related labourers"	93 "93 - Labourers in mining, construction, manufacturing and transport"	
+	            lab values ilo_job1_ocu_isco88_2digits ocu_isco88_2digits
+	            lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - main job"
 			drop todrop
 		
 		* ISCO 88 - 1 digit
@@ -1399,19 +1416,20 @@ else {
 }
 
 
-drop todrop*		
+	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Drop intermediate variables used for labeling activity and occupation
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-drop isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 isic3_2digits isic3
 
 **** Removing added variables (due to labels)
 
 drop if original!=1
 drop original
-
+drop todrop*	
+local Y
+local Q
 ***********************************************************************************************
 ***********************************************************************************************
 

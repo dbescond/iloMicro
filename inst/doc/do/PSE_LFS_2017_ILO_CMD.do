@@ -291,6 +291,39 @@ gen pw20_new =pw21
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"	
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: the variable related to marital status in the questionnaire is "pr5". However, in the dataset, this variable is not included; instead, there is the 
+*          variable "reason". This variable can be only mapped to the aggregate ilo variable. 
+* due to the "reason" variable has three defined categories, it is supposed that the category "other" corresponds to widow/divorced/separated from the original variable (pr5)
+
+/*	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if                                           // Single
+		replace ilo_mrts_details=2 if                                           // Married
+		replace ilo_mrts_details=3 if                                           // Union / cohabiting
+		replace ilo_mrts_details=4 if                                           // Widowed
+		replace ilo_mrts_details=5 if                                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+		*/		
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(reason,1,3)                      // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if reason==2                               // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+				
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -1112,10 +1145,10 @@ gen pw20_new =pw21
 * -------------------------------------------------------------------------------------------
 
 * Comment: PW23 -> Did ... desire for work job in wage or profit during the last four weeks? is used as the "willing" question
-
+* Note change RG 18/07/2018, the available question is now different!!!
 	 gen ilo_olf_dlma=.
-		replace ilo_olf_dlma=1 if (inrange(pw17,1,11)) & pw21==2 & ilo_lfs==3
-		replace ilo_olf_dlma=2 if (pw16==2 | pw17==12) & pw21==1 & ilo_lfs==3
+		replace ilo_olf_dlma=1 if (inrange(pw17,1,11)) & pw19==2 & ilo_lfs==3
+		replace ilo_olf_dlma=2 if (pw16==2 | pw17==12) & pw19==1 & ilo_lfs==3
 		replace ilo_olf_dlma=3 if (pw23==2 | pw23==3) & ilo_olf_dlma!=1 & ilo_olf_dlma!=2 & ilo_lfs==3
 		replace ilo_olf_dlma=4 if pw23==1 & ilo_olf_dlma!=1 & ilo_olf_dlma!=2 & ilo_lfs==3
 		replace ilo_olf_dlma=5 if ilo_olf_dlma==. & ilo_lfs==3

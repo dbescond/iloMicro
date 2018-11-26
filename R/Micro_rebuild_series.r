@@ -44,16 +44,16 @@ Micro_rebuild_series <- function(
 					
 	path <- paste0(ilo:::path$micro, ref_area, '/', source, '/')
 	
-	if(master_id %in% 'all') master_id <- paste0(stringr::str_sub(checkMaster$type, -1,-1), collapse = '')
+	if(master_id %in% 'all') master_id <- paste0(checkMaster$type %>% str_split('_', simplify = TRUE)%>% as_data_frame %>% .$V2, collapse = '/')
 
-	master_id <- stringr::str_split(master_id, pattern = '') %>% unlist
+	master_id <- stringr::str_split(master_id, pattern = '/') %>% unlist
 	
 
 	
 	for (M in 1:length(master_id))	{
 	
 	
-		test_master <-  workflow %>% filter(stringr::str_sub(type, -1,-1) %in% master_id[M]) # %>% select(value = time) 
+		test_master <-  workflow %>% separate(type, c('test', 'keep'),remove = FALSE , sep  = '_') %>% filter(keep %in% master_id[M])  %>% select(-test, -keep)
 	
 		master <-  test_master %>% filter(type %in% paste0('Master_', master_id[M])) 
 		

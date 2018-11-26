@@ -2,10 +2,10 @@
 * DATASET USED: EUS_2015_2016
 * NOTES: 
 * Files created: Standard variables on EUS Fiji
-* Authors: Mabelin Villarreal Fuentes
-* Who last updated the file: Mabelin Villarreal Fuentes
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 09 November 2017
-* Last updated: 10 November 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "FJI"
 global source "EUS"
 global time "2016"
@@ -180,12 +180,10 @@ cd "$inpath"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Level of education ('ilo_edu') [to check---]
+*			Level of education ('ilo_edu') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - to check: there are two variables: Education and Education2; I really don't know where the differences
-*            are coming from, but they are different!.. I took Education2
-*          - The highest level of education attained is used (1.10) together with the level of training
+* Comment: - The highest level of education attained is used (1.10) along with the level of training
 *            acquired (1.12) for those answering categories 1 to 9 in education.
 *          - Primary education includes "Class 7 or Form 1" in category 4.
 *          - ISCED mapping follows the document found here (Fiji):
@@ -201,7 +199,7 @@ cd "$inpath"
 		replace ilo_edu_isced97=6 if inrange(Education2,2,9) & Training!=10                 // Post-secondary non-terciary education
 		replace ilo_edu_isced97=7 if inlist(Education2,10,11,12)                            // First stage of tertiary education
 		replace ilo_edu_isced97=8 if inlist(Education2,13,14)                               // Second stage of tertiary education
-		replace ilo_edu_isced97=9 if ilo_edu_isced97==.                                                                                      // Level not stated
+		replace ilo_edu_isced97=9 if ilo_edu_isced97==.                                     // Level not stated
 			    label def isced_97_lab 1 "X - No schooling" 2 "0 - Pre-primary education" 3 "1 - Primary education or first stage of basic education" ///
 				                       4 "2 - Lower secondary education or second stage of basic education" 5 "3 - Upper secondary education" ///
 									   6 "4 - Post-secondary non-tertiary education" 7 "5 - First stage of tertiary education (not leading directly to an advanced research qualification)" ///
@@ -234,6 +232,36 @@ cd "$inpath"
 				    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				    lab val ilo_edu_attendance edu_attendance_lab
 				    lab var ilo_edu_attendance "Education (Attendance)"
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: no info on Union/Cohabiting 
+** Although in the questionnaire there is a category for Union/cohabiting, there is no info on that in the dataset
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if MaritalSt==1                                // Single
+		replace ilo_mrts_details=2 if MaritalSt==2                                // Married
+		*replace ilo_mrts_details=3 if                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if MaritalSt==3                                // Widowed
+		replace ilo_mrts_details=5 if inlist(MaritalSt,4,5)                       // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"		 
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -245,7 +273,7 @@ cd "$inpath"
 		gen ilo_dsb_aggregate=1
 			replace ilo_dsb_aggregate=2 if Diasbility==1	                    // With disability
 			replace ilo_dsb_aggregate=1 if ilo_dsb_aggregate==.	                // Without disability
-				    label def dsb_lab 1 "Persons without disability" 2 "Persons with disability" 
+				    label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
 				    label val ilo_dsb_aggregate dsb_lab
 				    label var ilo_dsb_aggregate "Disability status (Aggregate)"
 
@@ -276,7 +304,8 @@ cd "$inpath"
 * Comment: - Employment comprises people who answered yes to: (a) work for wages or salary, 
 *            (b) work for family business, (c) grow food, catch fish or make articles mainly 
 *            intended for or barter, (d) grow food, catch fish or make articles mainly for own
-*            consumption and (e) community worker.
+*            consumption and (e) community worker. It also comprises employed people temporary
+*            absent from work.
 *          - Unemployment includes people not in employment, seeking for a job and available 
 *            to work.
  
@@ -429,7 +458,6 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * Comment: - The original classification follows ISCO-08 at 4 digit-level.
 
-
     * MAIN JOB	
 	gen occ_code_prim=.
 	    replace occ_code_prim=int(curr_occ_code/100)                            // Employed
@@ -558,7 +586,7 @@ cd "$inpath"
 * --------------------------------------------------------------------------------------------------
 * --------------------------------------------------------------------------------------------------
 * Comment: - Only asked: hours actually worked in the past 7 days by intervals. Not asked for those
-*            temporary absent from work and therefore they are classified under not elsewhere classified.
+*            temporary absent from work and therefore they are classified under "Not elsewhere classified".
 *          - Since the intervals do not correspond to the exact dissaggregation used here, some notes
 *            to values are used.
 
@@ -580,13 +608,10 @@ cd "$inpath"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Working time arrangement ('ilo_job_time') [to check---]
+*			Working time arrangement ('ilo_job_time') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------	
-* Comment: - No information found about the threshold used at national level; however, question
-*            3.22 refers to the reasons why the person works less than 40 hours per week and 
-*            therefore this value is set.
-*          - Those temporary absent from work are classified under unknown.
+* Comment: - Those temporary absent from work are classified under unknown.
 	
 	gen ilo_job1_job_time=.
 		replace ilo_job1_job_time=1 if inlist(Approxtotalnumofhoursworked,1,2,3,4) & ilo_lfs==1
@@ -660,24 +685,24 @@ cd "$inpath"
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Time-related underemployed ('ilo_tru') [to check---]
+*			Time-related underemployed ('ilo_tru') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment: - Not enough information to define it. Maybe using: Mainreasontochangeyourcurre
+* Comment: - No information available.
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Occupational injury ('ilo_joball_inj') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------			
-* Comment: No information available.
+* Comment: - No information available.
 
 *--------------------------------------------------------------------------------------------
 *--------------------------------------------------------------------------------------------
 *			Days lost due to cases of occupational injury ('ilo_joball_oi_day') [done]
 *--------------------------------------------------------------------------------------------
 *--------------------------------------------------------------------------------------------
-* Comment: No information available.
+* Comment: - No information available.
 
 ***********************************************************************************************
 *			PART 3.3. UNEMPLOYMENT: ECONOMIC CHARACTERISTICS
@@ -695,15 +720,15 @@ cd "$inpath"
 *			Duration of unemployment ('ilo_dur') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comments: - Original question refers to the number of weeks seeking for a job.
+* Comments: 
 
 	gen ilo_dur_details=.
 	    replace ilo_dur_details=1 if (Howlongwithoutjob==1 & ilo_lfs==2)                         // Less than 1 month
 		replace ilo_dur_details=2 if (inlist(Howlongwithoutjob,2,3) & ilo_lfs==2)                // 1 to 3 months
 		replace ilo_dur_details=3 if (inlist(Howlongwithoutjob,4,5,6) & ilo_lfs==2)              // 3 to 6 months
-		replace ilo_dur_details=4 if (inlist(Howlongwithoutjob,7,8,9,10,11) & ilo_lfs==2)        // 6 to 12 months (between 24 and 47 weeks)
-		replace ilo_dur_details=5 if (Howlongwithoutjob==12 & ilo_lfs==2)                        // 12 to 24 months (between 48 and 95 weeks)
-		replace ilo_dur_details=6 if (Howlongwithoutjob==13 & ilo_lfs==2)                        // 24 months or more (96 weeks or more)
+		replace ilo_dur_details=4 if (inlist(Howlongwithoutjob,7,8,9,10,11) & ilo_lfs==2)        // 6 to 12 months
+		replace ilo_dur_details=5 if (Howlongwithoutjob==12 & ilo_lfs==2)                        // 12 to 24 months
+		replace ilo_dur_details=6 if (Howlongwithoutjob==13 & ilo_lfs==2)                        // 24 months or more
 		replace ilo_dur_details=7 if (ilo_dur_details==. & ilo_lfs==2)                           // Not elsewhere classified
 		        lab def ilo_unemp_det 1 "Less than 1 month" 2 "1 month to less than 3 months" 3 "3 months to less than 6 months" ///
 									  4 "6 months to less than 12 months" 5 "12 months to less than 24 months" 6 "24 months or more" ///
@@ -723,14 +748,14 @@ cd "$inpath"
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Previous economic activity ('ilo_preveco_isic4') [done]
+*			Previous economic activity ('ilo_preveco') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 * Comment: - No information available.
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Previous occupation ('ilo_prevocu_isco88') [done]
+*			Previous occupation ('ilo_prevocu') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 * Comment: - No information available.		
@@ -747,11 +772,11 @@ cd "$inpath"
 * Comment: - Willingness is not asked, and thus options 3 and 4 are not produced.
 
 	gen ilo_olf_dlma=.
-		replace ilo_olf_dlma = 1 if (r407==1 & r409a==2 & ilo_lfs==3)		    // Seeking, not available
-		replace ilo_olf_dlma = 2 if (r407==2 & r409a==1 & ilo_lfs==3)			// Not seeking, available
-		*replace ilo_olf_dlma = 3 if 		                                    // Not seeking, not available, willing
-		*replace ilo_olf_dlma = 4 if 		                                    // Not seeking, not available, not willing
-		replace ilo_olf_dlma = 5 if	(ilo_olf_dlma==. & ilo_lfs==3)				// Not classified 
+		replace ilo_olf_dlma = 1 if (Activelylookingforajob==1 & Ifjobsavailablecouldyoustar==2 & ilo_lfs==3)		    // Seeking, not available
+		replace ilo_olf_dlma = 2 if (Activelylookingforajob==2 & Ifjobsavailablecouldyoustar==1 & ilo_lfs==3)			// Not seeking, available
+		*replace ilo_olf_dlma = 3 if 		                                                                            // Not seeking, not available, willing
+		*replace ilo_olf_dlma = 4 if 		                                                                            // Not seeking, not available, not willing
+		replace ilo_olf_dlma = 5 if	(ilo_olf_dlma==. & ilo_lfs==3)				                                        // Not classified 
 	 		lab def dlma_lab 1 "1 - Seeking, not available (Unavailable jobseekers)" 2 "2 - Not seeking, available (Available potential jobseekers)" ///
 							 3 "3 - Not seeking, not available, willing (Willing non-jobseekers)" 4 "4 - Not seeking, not available, not willing" 5 "X - Not elsewhere classified"
 			lab val ilo_olf_dlma dlma_lab 
@@ -762,31 +787,16 @@ cd "$inpath"
 *			Reasons for not seeking a job ('ilo_olf_reason') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-* Comment:
-	
-	gen ilo_olf_reason=.
-		replace ilo_olf_reason=1 if inlist(r409,1,2,3,14) & ilo_lfs==3          // Labour market
-		replace ilo_olf_reason=2 if inlist(r409,4,5,6,7,18) & ilo_lfs==3        // Other labour market reasons
-		replace ilo_olf_reason=3 if inlist(r409,8,9,10,11,12,15) & ilo_lfs==3   // Personal/Family-related
-		replace ilo_olf_reason=4 if r409==13 & ilo_lfs==3                       // Does not need/want to work
-		replace ilo_olf_reason=5 if ilo_olf_reason==. & ilo_lfs==3              // Not elsewhere classified
- 			    lab def lab_olf_reason 1 "1 - Labour market" 2 "Other labour market reasons" 3 "2 - Personal/Family-related"  ///
-				                       4 "3 - Does not need/want to work" 5 "4 - Not elsewhere classified"
-		        lab val ilo_olf_reason lab_olf_reason
-			    lab var ilo_olf_reason "Labour market attachment (Reasons for not seeking a job)"
+* Comment: - The reasons for not seeking a job are only asked to those considered originally 
+*            to be unemployed and therefore, not produced.
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Discouraged job-seekers ('ilo_dis') [done]
 * -------------------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------------------- 
-* Comment: 	
-
-	gen ilo_dis=.
-	    replace ilo_dis=1 if !inlist(ilo_lfs,1,2) & (r409a==1) & (ilo_olf_reason==1)
-			    lab def ilo_dis_lab 1 "Discouraged job-seekers" 
-			    lab val ilo_dis ilo_dis_lab
-			    lab var ilo_dis "Discouraged job-seekers"			
+* Comment: - The reasons for not seeking a job are only asked to those considered originally 
+*            to be unemployed and therefore, not produced.
 			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -818,7 +828,7 @@ cd "$outpath"
 		drop ilo_age 
 		
 		/*Variables computed in-between*/
-		drop to_drop indu_code_prim indu_code_sec occ_code_prim occ_code_sec social_security
+		drop indu_code_prim occ_code_prim gross_income
 		
 		compress 
 		

@@ -1,5 +1,5 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Chile
-* DATASET USED: Palestine LFS
+* DATASET USED: Chile CASEN
 * NOTES: 
 * Files created: Standard variables on LFS Chile
 * Authors: ILO / Department of Statistics / DPAU
@@ -250,7 +250,6 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 
-** ESTE CAMBIA RESPECTO A 2003
 		gen ilo_edu_attendance=.
 			replace ilo_edu_attendance=1 if e3==1
 			replace ilo_edu_attendance=2 if e3==2
@@ -258,7 +257,37 @@ cd "$inpath"
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"	
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: Category 5 of ilo_mrts_details also includes annulled marriage (ecivil==3)
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if ecivil==7                                          // Single
+		replace ilo_mrts_details=2 if ecivil==1                                          // Married
+		replace ilo_mrts_details=3 if ecivil==2                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if ecivil==6                                          // Widowed
+		replace ilo_mrts_details=5 if inrange(ecivil,3,5)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                     // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
 				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+															
+								
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')  
@@ -297,6 +326,8 @@ cd "$inpath"
  ** Despite the fact the the working age population is defined as all the population aged 15 and above, 
  ** the questions related to the working module are asked to the population aged 12 and above.
  
+  ** Note: the definition of unemployment does not include the availability criteria. Two criteria (not in employment and seeking) T5:1429
+
 	gen ilo_lfs=.
 	
 		replace ilo_lfs=1 if (o1==1 | o2==1) & ilo_wap==1 	// 1 "Employed"

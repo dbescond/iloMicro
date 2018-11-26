@@ -1,5 +1,5 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Chile
-* DATASET USED: Palestine LFS
+* DATASET USED: Chile CASEN
 * NOTES: 
 * Files created: Standard variables on LFS Chile
 * Authors: ILO / Department of Statistics / DPAU
@@ -211,15 +211,15 @@ cd "$inpath"
 * -------------------------------------------------------------------------------------------
 
 	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if educ==0                                                             // X - No schooling
-		replace ilo_edu_isced97=2 if educ==1                                                           // 0 - Pre-primary education
-		replace ilo_edu_isced97=3 if educ==2                                                           // 1 - Primary education or first stage of basic education
-		replace ilo_edu_isced97=4 if inlist(educ,3,4)                                                           // 2 - Lower secondary or second stage of basic education
-		replace ilo_edu_isced97=5 if inlist(educ,5,6,7)                                                // 3 - Upper secondary education
-		replace ilo_edu_isced97=6 if educ==8                                              // 4 - Post-secondary non-tertiary education
-		replace ilo_edu_isced97=7 if educ==9                                                // 5 - First stage of tertiary education
- 		*replace ilo_edu_isced97=8 if educ==                                                            // 6 - Second stage of tertiary education
-        replace ilo_edu_isced97=9 if ilo_edu_isced97 == .                                                // UNK - Level not stated
+		replace ilo_edu_isced97=1 if educ==0                                     // X - No schooling
+		replace ilo_edu_isced97=2 if educ==1                                     // 0 - Pre-primary education
+		replace ilo_edu_isced97=3 if educ==2                                     // 1 - Primary education or first stage of basic education
+		replace ilo_edu_isced97=4 if inlist(educ,3,4)                             // 2 - Lower secondary or second stage of basic education
+		replace ilo_edu_isced97=5 if inlist(educ,5,6,7)                           // 3 - Upper secondary education
+		replace ilo_edu_isced97=6 if educ==8                                      // 4 - Post-secondary non-tertiary education
+		replace ilo_edu_isced97=7 if educ==9                                      // 5 - First stage of tertiary education
+ 		*replace ilo_edu_isced97=8 if educ==                                       // 6 - Second stage of tertiary education
+        replace ilo_edu_isced97=9 if ilo_edu_isced97 == .                          // UNK - Level not stated
 		 
      
 	     label def isced_97_lab 1 "X - No schooling"	2 "0 - Pre-primary education"	3 "1 - Primary education or first stage of basic education"	4 "2 - Lower secondary or second stage of basic education"	////
@@ -257,6 +257,37 @@ cd "$inpath"
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"	
+				
+				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: Category 5 of ilo_mrts_details also includes annulled marriage (ecivil==3)
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if ecivil==7                                          // Single
+		replace ilo_mrts_details=2 if ecivil==1                                          // Married
+		replace ilo_mrts_details=3 if ecivil==2                                          // Union / cohabiting
+		replace ilo_mrts_details=4 if ecivil==6                                          // Widowed
+		replace ilo_mrts_details=5 if inrange(ecivil,3,5)                                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			                     // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+												
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -297,6 +328,8 @@ cd "$inpath"
  ** Despite the fact the the working age population is defined as all the population aged 15 and above, 
  ** the questions related to the working module are asked to the population aged 12 and above.
  
+  ** Note: the definition of unemployment does not include the availability criteria. Two criteria (not in employment and seeking) T5:1429
+
 	gen ilo_lfs=.
 	
 		replace ilo_lfs=1 if (o1==1 | o2==1) & ilo_wap==1 	// 1 "Employed"

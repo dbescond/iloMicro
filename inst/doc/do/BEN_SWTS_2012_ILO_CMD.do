@@ -1,7 +1,7 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - COUNTRY, TIME
-* DATASET USED: COUNTRY, SURVEY'S ACRONYM, TIME
+* DATASET USED: Benin, SWTS, 2012
 * NOTES: 
-* Files created: Standard variables COU_SUR_TIM_FULL.dta and COU_SUR_TIME_ILO.dta
+* Files created: Standard variables BEN_SWTS_2012_FULL.dta and BEN_SWTS_2012_ILO.dta
 * Authors: ILO / Department of Statistics / DPAU
 * Starting Date: 27 February 2018
 * Last updated: 14 May 2018
@@ -186,8 +186,8 @@ cd "$inpath"
 	
 	* Detailed
 	gen ilo_edu_isced97=.
-		replace ilo_edu_isced97=1 if  highestlevel_comp==1   // No schooling
-		replace ilo_edu_isced97=2 if  highestlevel_comp==1.5  // Pre-primary education
+		replace ilo_edu_isced97=1 if  highestlevel_comp==1 | ever_attend==2   // No schooling
+		*replace ilo_edu_isced97=2 if  highestlevel_comp==// Pre-primary education
 		replace ilo_edu_isced97=3 if  highestlevel_comp==2   // Primary education or first stage of basic education
 		replace ilo_edu_isced97=4 if  highestlevel_comp==3     // Lower secondary education or second stage of basic education
 		replace ilo_edu_isced97=5 if  highestlevel_comp==4     // Upper secondary education
@@ -258,8 +258,32 @@ cd "$inpath"
 		        label values ilo_mrts_aggregate label_mrts_aggregate
 		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
 			
-				
 * ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			Disability status ('ilo_dsb_details')                              *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+    * Detailed
+       gen ilo_dsb_details=.
+             replace ilo_dsb_details=1 if (b18==1 & b19==1 & b20==1 & b21==1 )                            
+             replace ilo_dsb_details=2 if (b18==2 | b19==2 | b20==2 | b21==2 )                                                 
+             replace ilo_dsb_details=3 if (b18==3 | b19==3 | b20==3 | b21==3 )                                                 
+             replace ilo_dsb_details=4 if (b18==4 | b19==4 | b20==4 | b21==4 )
+
+				label def dsb_det_lab 1 "1 - No, no difficulty" 2 "2 - Yes, some difficulty" 3 "3 - Yes, a lot of difficulty" 4 "4 - Cannot do it at all"
+				label val ilo_dsb_details dsb_det_lab
+				label var ilo_dsb_details "Disability status (Details)"
+
+    * Aggregate  	
+	gen ilo_dsb_aggregate=.
+	    replace ilo_dsb_aggregate=1 if (ilo_dsb_details==1 | ilo_dsb_details==2)   // Persons without disability
+		replace ilo_dsb_aggregate=2 if (ilo_dsb_details==3 | ilo_dsb_details==4)  // Persons with disability
+				label def dsb_lab 1 "1 - Persons without disability" 2 "2 - Persons with disability" 
+				label val ilo_dsb_aggregate dsb_lab
+				label var ilo_dsb_aggregate "Disability status (Aggregate)"
+
+				
 ********************************************************************************
 *                                                                              *
 *			                PART 3. ECONOMIC SITUATION                         *
@@ -290,7 +314,7 @@ cd "$inpath"
 		c27e==1 | c27f==1 |c27g==1 ) & ilo_wap==1				   // Employed: ILO definition
 		replace ilo_lfs=1 if c28==1 & ilo_wap==1										// Employed: temporary absent
 		replace ilo_lfs=2 if inlist(e01,1,2) & e13==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: three criteria
-		replace ilo_lfs=2 if e03a==1 & e03b==1 & e13==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
+		replace ilo_lfs=2 if (e03a==1 | e03b==1) & e13==1 & ilo_lfs!=1 & ilo_wap==1			// Unemployed: available future starters
 	    replace ilo_lfs=3 if !inlist(ilo_lfs,1,2) & ilo_wap==1		// Outside the labour force
 				label define label_ilo_lfs 1 "1 - Employed" 2 "2 - Unemployed" 3 "3 - Outside Labour Force"
 				label value ilo_lfs label_ilo_lfs
@@ -637,7 +661,7 @@ cd "$inpath"
 *	    Monthly labour related income ('ilo_lri_ees' and 'ilo_lri_slf')  	   *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment: no information on income for self-employed. information on the net profit (d27)
+* Comment: 
 
     ***********
     * MAIN JOB:
@@ -651,13 +675,14 @@ cd "$inpath"
 		replace ilo_job1_lri_ees = d14x *(26/12) if d18==3
 	    replace ilo_job1_lri_ees = .     if ilo_lfs!=1
 		        lab var ilo_job1_lri_ees "Monthly earnings of employees - main job"
-	/*
-	* Self-employed
+
 	gen ilo_job1_lri_slf = .
-	    replace ilo_job1_lri_slf =       if ilo_job1_ste_aggregate==2
+	    replace ilo_job1_lri_slf = d27      if ilo_job1_ste_aggregate==2
 	    replace ilo_job1_lri_slf = .     if ilo_lfs!=1
+		replace ilo_job1_lri_slf = d27 + d29 if ilo_job1_ste_aggregate==2 & d29>0
 		        lab var ilo_job1_lri_slf "Monthly labour related income of self-employed - main job"
-			*/
+			
+			
   
 * ------------------------------------------------------------------------------
 ********************************************************************************
@@ -672,15 +697,14 @@ cd "$inpath"
 *			Time-related underemployed ('ilo_tru') 		                       *
 * ------------------------------------------------------------------------------
 * ------------------------------------------------------------------------------
-* Comment:Not feasible - Criterion of availability not available
 
-/*
+
 	gen ilo_joball_tru = .
-	    replace ilo_joball_tru = 1 if ilo_joball_how_usual<=  &  &  & ilo_lfs==1
+	    replace ilo_joball_tru = 1 if ilo_job1_how_actual<=35  & d34==1  & d35>0 & ilo_lfs==1
 			    lab def tru_lab 1 "Time-related underemployed"
 			    lab val ilo_joball_tru tru_lab
 			    lab var ilo_joball_tru "Time-related underemployed"
-		*/	
+		
 	
 * ------------------------------------------------------------------------------
 ********************************************************************************

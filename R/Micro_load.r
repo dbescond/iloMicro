@@ -21,10 +21,10 @@ Micro_load <- function(	path = NULL,
 	ref_time <- ilo_time
 	
 
-# load df
-testNote <- FALSE
-if(!is.null(path)){
-options(warn = -1)			
+	# load df
+	testNote <- FALSE
+	if(!is.null(path)){
+		options(warn = -1)			
 		df <- NULL
 		if(asFactor){	
 				df <- haven::read_dta(path) %>% mutate(ilo_time = ifelse(class(.$ilo_time) %in% 'numeric', as.character(ilo_time), haven::as_factor(ilo_time) %>% as.character)) %>% select(-contains('ilo_key'))
@@ -40,15 +40,14 @@ options(warn = -1)
 			testNote <- TRUE
 			}
 		}
-options(warn = 0)
+	options(warn = 0)
 		
 
-invisible(gc(reset = TRUE))
-invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
 
 	
 	
-	# df <- haven:::zap_formats(df)
 	if(!asFactor){
 		df <- df %>% mutate_if(is.labelled, funs(unclass)) 
 	}
@@ -65,21 +64,16 @@ invisible(gc(reset = TRUE))
 
 
 	ilo_tpl$Variable 			<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Variable') 
-	# ilo_tpl$Help_classif 		<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Help_classif') 
-	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 20)) %>% filter(Is_Validate %in% c('TRUE', 'FALSE'))
+	ilo_tpl$Mapping_indicator 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_indicator', col_types  =rep('text', 20)) %>% filter(Is_Validate %in% c('TRUE', 'FALSE', 'QUERY'))
 	ilo_tpl$Mapping_classif 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_classif') 
-	# ilo_tpl$Mapping_rep_var 	<- readxl::read_excel(file.path(paste0(ilo:::path$micro,'_Admin/template'),'3_Framework.xlsx'), sheet= 'Mapping_rep_var') 
-
+	
 	if(testNote){ilo_tpl$Note <- ilo_tpl$Variable}
 	
 	assign('ilo_tpl', ilo_tpl, envir =globalenv())
-invisible(gc(reset = TRUE))
-invisible(gc(reset = TRUE))
-	# if(OpenFramework){
-		# shell.exec(file = file.path(tempdir(),'3_Framework.xlsx'))
-	# } else {
-		# unlink(file.path(tempdir(),'3_Framework.xlsx'))
-	# }
+	
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	
 	if(!is.null(path)){
 		return(df)	
 	}

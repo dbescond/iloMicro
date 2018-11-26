@@ -1,5 +1,5 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Chile
-* DATASET USED: Palestine LFS
+* DATASET USED: Chile CASEN
 * NOTES: 
 * Files created: Standard variables on LFS Chile
 * Authors: ILO / Department of Statistics / DPAU
@@ -208,8 +208,9 @@ cd "$inpath"
 *			Level of education ('ilo_edu')
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
+** Comment: this variable is not computed because the mapping does not give a consistent result
 
-
+/*
 gen ilo_edu_isced97=.
 		replace ilo_edu_isced97=1 if e9==15                                                             // X - No schooling
 		replace ilo_edu_isced97=2 if inlist(e9,1,2)                                                           // 0 - Pre-primary education
@@ -244,7 +245,7 @@ gen ilo_edu_isced97=.
 			label val ilo_edu_aggregate edu_aggr_lab
 			label var ilo_edu_aggregate "Education (Aggregate level)"
 
-
+*/
 	
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -259,7 +260,17 @@ gen ilo_edu_isced97=.
 				lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"	
+
 				
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: this variable cannot be computed for this year because the single category is not specified, and there is problems with the widow/er (viudo) category. 
+	
+
+							
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb_details')  
@@ -298,6 +309,8 @@ gen ilo_edu_isced97=.
  ** Despite the fact the the working age population is defined as all the population aged 15 and above, 
  ** the questions related to the working module are asked to the population aged 12 and above.
  
+  ** Note: the definition of unemployment does not include the availability criteria. Two criteria (not in employment and seeking) T5:1429
+
 	gen ilo_lfs=.
 	
 		replace ilo_lfs=1 if (o1==1 | o2==1) & ilo_wap==1 	// 1 "Employed"

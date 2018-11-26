@@ -9,7 +9,7 @@ Micro_process(ref_area = NULL, source = NULL, time = NULL,
   saveCSV = TRUE, ilo_time = NULL, delete = FALSE, collection = "YI",
   keep_count = TRUE, query = NULL, print_ind = TRUE, validate = FALSE,
   consolidate = "1", skip = NULL, timefrom = NULL, timeto = NULL,
-  output = "ilostat", PUB = FALSE)
+  output = "ilostat", PUB = FALSE, QUERY = NULL)
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
@@ -45,6 +45,10 @@ Micro_process(ref_area = NULL, source = NULL, time = NULL,
 \item{timeto}{query to reduce time as from ending year timeto.}
 
 \item{output}{if one year one specific indicator, return in ilo template format. Default 'ilostat'.}
+
+\item{PUB}{if TRUE will process only dataset ready for ilostat publication (ie. workflow on_ilostat = 'Yes') else all ready/published. Default FALSE.}
+
+\item{QUERY}{process only indicator dedicate to a special query, not the entire set of indicators (ie. indicator template columns indicator_definition set to not null). Default NULL.}
 
 \item{path}{dta or zip file path for loading ilo microdataset pre precessed, default = NULL.}
 

@@ -2,10 +2,10 @@
 * DATASET USED: Mongolia LFS 2010
 * NOTES: 
 * Files created: Standard variables on LFS Mongolia 2011
-* Authors: Mabelin Villarreal Fuentes
-* Who last updated the file: Mabelin Villarreal Fuuentes
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 27th April 2017
-* Last updated: 28th April 2017
+* Last updated: 25 June 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -21,7 +21,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "MNG"
 global source "LFS"
 global time "2010"
@@ -1160,8 +1160,7 @@ gen ilo_lfs=.
 			lab def dis_lab 1 "Discouraged job-seekers"
 			lab val ilo_dis dis_lab
 			lab var ilo_dis "Discouraged job-seekers"
-			
-			
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Youth not in education, employment or training ('ilo_neet')  

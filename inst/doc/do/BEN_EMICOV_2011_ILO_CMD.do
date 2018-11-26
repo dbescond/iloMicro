@@ -1,10 +1,10 @@
 * TITLE OF DO FILE: ILO Microdata Preprocessing code template - Benin, 2011
-* DATASET USED: Benin - Enquête Modulaire Intégrée sur les Conditions de Vie des ménages (EMICOV) - 2011
+* DATASET USED: Benin - EnquÃƒÆ’ªte Modulaire IntÃƒÆ’©grÃƒÆ’©e sur les Conditions de Vie des mÃƒÆ’©nages (EMICOV) - 2011
 * NOTES:
-* Authors: DPAU
-* Who last updated the file: DPAU 
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 30 August 2017
-* Last updated: 30 August 2017
+* Last updated: 08 February 2018
 ***********************************************************************************************
 
 
@@ -22,7 +22,7 @@ clear all
 set more off
 *set more off, permanently
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "BEN"
 global source "EMICOV"
 global time "2011"
@@ -32,64 +32,21 @@ global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
 
-************************************************************************************
-
-* Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
-
-* ssc install labutil
-
-************************************************************************************
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-		
-cd "$temppath"
-		
-	tempfile labels
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-			* Destring codes
-			destring code_level, replace
-			* Reshape
-				    foreach classif in var_name {
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							gen `var'=code_level
-							replace `var'=. if code_label`var'==""
-							labmask `var' , val(code_label`var')
-							}				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-			
-*********************************************************************************************
-
-* Load original dataset
-
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
-	use "$inputFile", clear
+	use ${inputFile}, clear
+	*renaming everything in lower case
 	rename *, lower  
-
-
-***********************************************************************************************
-***********************************************************************************************
-
-*			2. MAP VARIABLES
-
-***********************************************************************************************
-***********************************************************************************************
+	
+********************************************************************************
+********************************************************************************
+*                                                                              *
+*			                      2. MAP VARIABLES                             *
+*                                                                              *
+********************************************************************************
+********************************************************************************
 
 * ---------------------------------------------------------------------------------------------
 ***********************************************************************************************
@@ -249,6 +206,37 @@ cd "$inpath"
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: married and union/cohabiting categories are together in the original variable m01_08_cm, therefore, only the aggregated ilo variable is computed.  
+
+/*	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if                                           // Single
+		replace ilo_mrts_details=2 if                                           // Married
+		replace ilo_mrts_details=3 if                                           // Union / cohabiting
+		replace ilo_mrts_details=4 if                                           // Widowed
+		replace ilo_mrts_details=5 if                                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+	*/
+	
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(m01_08_cm,2,3,4)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if m01_08_cm==1            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"	
+				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -321,7 +309,7 @@ cd "$inpath"
 			replace ilo_job1_ste_icse93=1 if (inlist(emp_ap3,1,2,3,4,5) & ilo_lfs==1)	// Employees
 			replace ilo_job1_ste_icse93=2 if (emp_ap3==6 & ilo_lfs==1)	            	// Employers
 			replace ilo_job1_ste_icse93=3 if (emp_ap3==7 & ilo_lfs==1)      			// Own-account workers
-			* replace ilo_job1_ste_icse93=4 if                 							// Members of producers’ cooperatives
+			* replace ilo_job1_ste_icse93=4 if                 							// Members of producersÃƒ¢Ã¢â€š¬Ã¢â€ž¢ cooperatives
 			replace ilo_job1_ste_icse93=5 if (inlist(emp_ap3,8,9) & ilo_lfs==1)	        // Contributing family workers
 			replace ilo_job1_ste_icse93=6 if (ilo_job1_ste_icse93==. & ilo_lfs==1)  	// Not classifiable
 				label def label_ilo_ste_icse93 1 "1 - Employees" 2 "2 - Employers" 3 "3 - Own-account workers" ///                      
@@ -347,9 +335,7 @@ cd "$inpath"
 
 * Comment: Based on national classification, mapping is only feasible at aggregated level
 		
-	* Import value labels
-
-		append using `labels', gen (lab)
+	 
 		
 	* Aggregated level
 	

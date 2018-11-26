@@ -2,8 +2,8 @@
 * DATASET USED: Armenia LFS
 * NOTES:
 * Authors: ILO / Department of Statistics / DPAU
-* Starting Date: 14 February 2017
-* Last updated: 14 February 2018
+* Starting Date: 15 February 2018
+* Last updated: 14 May 2018
 ***********************************************************************************************
 
 
@@ -285,6 +285,37 @@ keep if ilo_wgt!=.
 * Comment: - The only question regarding education asked to the entire population (before employment/
 *          unemployment chapters) is B15: "Educational level". No related to current attendance.
 
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	[done]                     *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if b16==1                                       // Single
+		replace ilo_mrts_details=2 if b16==2                                       // Married
+		*replace ilo_mrts_details=3 if                                            // Union / cohabiting
+		replace ilo_mrts_details=4 if b16==3                                      // Widowed
+		replace ilo_mrts_details=5 if b16==4                                     // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			             // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"
+
+
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')  [done]
@@ -293,8 +324,8 @@ keep if ilo_wgt!=.
 * Comment: 
 				
 	gen ilo_dsb_aggregate=.
-		replace ilo_dsb_aggregate=1 if (b20!=1)
-		replace ilo_dsb_aggregate=2 if (b20==1)
+		replace ilo_dsb_aggregate=1 if (b22!=1)
+		replace ilo_dsb_aggregate=2 if (b22==1)
 			label def dsb_aggregate_lab 1 "Persons without disability" 2 "Persons with disability"
 			label val ilo_dsb_aggregate dsb_aggregate_lab
 			label var ilo_dsb_aggregate "Disability status (Aggregate)"
@@ -318,15 +349,10 @@ keep if ilo_wgt!=.
 *            the army (mandatory).
 
 	gen ilo_wap=.
-		if to_drop_1==2014{
-	replace ilo_wap=1 if (lr_wap==1)
-	}
-	else {
-	replace ilo_wap=1 if (lra==1)
-	}
-			lab def wap_lab 1 "Working age population"
-			lab val ilo_wap wap_lab
-			label var ilo_wap "Working age population"
+        replace ilo_wap=1 if (lra==1)
+			    lab def wap_lab 1 "Working age population"
+			    lab val ilo_wap wap_lab
+			    label var ilo_wap "Working age population"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -380,12 +406,12 @@ keep if ilo_wgt!=.
 	* Detailed categories:
 	
 		gen ilo_job1_ste_icse93=.
-			replace ilo_job1_ste_icse93=1 if (inlist(d8,1,2) & ilo_lfs==1)		// Employees
-			replace ilo_job1_ste_icse93=2 if (d8==3 & ilo_lfs==1)		        // Employers
-			replace ilo_job1_ste_icse93=3 if (inlist(d8,4,5) & ilo_lfs==1)		// Own-account workers
-			replace ilo_job1_ste_icse93=4 if (d8==7 & ilo_lfs==1)               // Producer cooperatives
-			replace ilo_job1_ste_icse93=5 if (d8==6 & ilo_lfs==1)       		// Contributing family workers
-			replace ilo_job1_ste_icse93=6 if (d8==8 & ilo_lfs==1)       		// Not classifiable
+			replace ilo_job1_ste_icse93=1 if (inlist(d8,1,2) & ilo_lfs==1)		                // Employees
+			replace ilo_job1_ste_icse93=2 if (d8==3 & ilo_lfs==1)		                        // Employers
+			replace ilo_job1_ste_icse93=3 if (inlist(d8,4,5) & ilo_lfs==1)		                // Own-account workers
+			replace ilo_job1_ste_icse93=4 if (d8==7 & ilo_lfs==1)                               // Producer cooperatives
+			replace ilo_job1_ste_icse93=5 if (d8==6 & ilo_lfs==1)       		                // Contributing family workers
+			replace ilo_job1_ste_icse93=6 if (ilo_job1_ste_icse93==. & ilo_lfs==1)       		// Not classifiable
 
 				label def label_ilo_ste_icse93 1 "1 - Employees" 2 "2 - Employers" 3 "3 - Own-account workers"  ///
 											   4 "4 - Members of producers cooperatives" 5 "5 - Contributing family workers" ///
@@ -409,12 +435,12 @@ keep if ilo_wgt!=.
 	* Detailed categories:
 	
 		gen ilo_job2_ste_icse93=.
-			replace ilo_job2_ste_icse93=1 if (inlist(e27,1,2) & ilo_mjh==2)		// Employees
-			replace ilo_job2_ste_icse93=2 if (e27==3 & ilo_mjh==2)      		// Employers
-			replace ilo_job2_ste_icse93=3 if (inlist(e27,4,5) & ilo_mjh==2)		// Own-account workers
-			replace ilo_job2_ste_icse93=4 if (e27==7 & ilo_mjh==2)      		// Producer cooperatives
-			replace ilo_job2_ste_icse93=5 if (e27==6 & ilo_mjh==2)      		// Contributing family workers
-			replace ilo_job2_ste_icse93=6 if (e27==8 & ilo_mjh==2)          	// Not classifiable
+			replace ilo_job2_ste_icse93=1 if (inlist(e27,1,2) & ilo_mjh==2)		                // Employees
+			replace ilo_job2_ste_icse93=2 if (e27==3 & ilo_mjh==2)      		                // Employers
+			replace ilo_job2_ste_icse93=3 if (inlist(e27,4,5) & ilo_mjh==2)		                // Own-account workers
+			replace ilo_job2_ste_icse93=4 if (e27==7 & ilo_mjh==2)      		                // Producer cooperatives
+			replace ilo_job2_ste_icse93=5 if (e27==6 & ilo_mjh==2)      		                // Contributing family workers
+			replace ilo_job2_ste_icse93=6 if (ilo_job2_ste_icse93==. & ilo_mjh==2)          	// Not classifiable
 				label val ilo_job2_ste_icse93 label_ilo_ste_icse93
 				label var ilo_job2_ste_icse93 "Status in employment (ICSE 93)- second job"
 
@@ -586,8 +612,8 @@ keep if ilo_wgt!=.
 *            since by definition it is part-time
 
 		gen ilo_job1_job_time=.
-			replace ilo_job1_job_time=1 if (d21==3 & ilo_lfs==1) 	        // Part-time
-			replace ilo_job1_job_time=2 if (inlist(d21,1,2) & ilo_lfs==1)	// Full-time
+			replace ilo_job1_job_time=1 if (d21==2 & ilo_lfs==1) 	// Part-time
+			replace ilo_job1_job_time=2 if (d21==1 & ilo_lfs==1)	// Full-time
 					lab def job_time_lab 1 "1 - Part-time" 2 "2 - Full-time" 
 					lab val ilo_job1_job_time job_time_lab
 					lab var ilo_job1_job_time "Job (Working time arrangement)"				
@@ -603,7 +629,7 @@ keep if ilo_wgt!=.
 		
 		gen ilo_job1_job_contract=.
 		    replace ilo_job1_job_contract=1 if (d18==1 & ilo_job1_ste_aggregate==1)                        //Permanent
-			replace ilo_job1_job_contract=2 if (inlist(d18,2,3,4) & ilo_job1_ste_aggregate==1)             //Temporary
+			replace ilo_job1_job_contract=2 if (inlist(d18,2,3) & ilo_job1_ste_aggregate==1)               //Temporary
 			replace ilo_job1_job_contract=3 if (ilo_job1_job_contract==. & ilo_job1_ste_aggregate==1)      //Unknown
 					lab def job_contract_lab 1 "1 - Permanent" 2 "2 - Temporary" 3 "3 - Unknown"
 					lab val ilo_job1_job_contract job_contract_lab
@@ -800,15 +826,14 @@ keep if ilo_wgt!=.
 	           gen d14_1_2 = d14_1 + d14_2
 	
 	/*mid-point for those using the intervals*/
-	           gen d15_mid=22500 if d15==1                                      // Up to 45000 AMD
-			       replace d15_mid=45000 if d15==2                              // 45000 AMD
-				   replace d15_mid=67500 if d15==3                              // 45001 - 90000 AMD
-				   replace d15_mid=135000 if d15==4                             // 90000 - 180000 AMD
-				   replace d15_mid=270000 if d15==5                             // 180000 - 360000 AMD
-				   replace d15_mid=430000 if d15==6                             // 360000 - 500000 AMD
-				   replace d15_mid=600000 if d15==7                             // 500000 - 700000 AMD  
-				   replace d15_mid=700000 if d15==8                             // 700000 AMD and more
-				   replace d15_mid=. if inlist(d15,9,10)                        // Refused to answer/ Do not know/ It's difficult to answer
+	           gen d15_mid=27500 if d15==1                                      // Up to 55000 AMD
+			       replace d15_mid=55000 if d15==2                              // 55000 AMD
+				   replace d15_mid=82500.5 if d15==3                            // 55001 - 110000 AMD
+				   replace d15_mid=165000 if d15==4                             // 110000 - 220000 AMD
+				   replace d15_mid=330000 if d15==5                             // 220000 - 440000 AMD
+				   replace d15_mid=520000 if d15==6                             // 440000 - 600000 AMD
+				   replace d15_mid=650000 if d15==7                             // 600000 - 700000 AMD  
+				   replace d15_mid=. if inlist(d15,8,9)                         // Refused to answer/ Do not know/ It's difficult to answer
 	
 	/*final amount*/
 	           
@@ -850,15 +875,14 @@ keep if ilo_wgt!=.
 	           gen e32_1_2 = e32_1 + e32_2
 	
 	/*mid-point for those using the intervals*/
-	           gen e33_mid=22500 if e33==1                                      // Up to 45000 AMD
-			       replace e33_mid=45000 if e33==2                              // 45000 AMD
-				   replace e33_mid=67500 if e33==3                              // 45001 - 90000 AMD
-				   replace e33_mid=135000 if e33==4                             // 90000 - 180000 AMD
-				   replace e33_mid=270000 if e33==5                             // 180000 - 360000 AMD
-				   replace e33_mid=430000 if e33==6                             // 360000 - 500000 AMD
-				   replace e33_mid=600000 if e33==7                             // 500000 - 700000 AMD  
-				   replace e33_mid=700000 if e33==8                             // 700000 AMD and more
-				   replace e33_mid=. if inlist(e33,9,10)                        // Refused to answer/ Do not know/ It's difficult to answer
+	           gen e33_mid=27500 if e33==1                                      // Up to 55000 AMD
+			       replace e33_mid=55000 if e33==2                              // 55000 AMD
+				   replace e33_mid=82500.5 if e33==3                            // 55001 - 110000 AMD
+				   replace e33_mid=165000 if e33==4                             // 110000 - 220000 AMD
+				   replace e33_mid=330000 if e33==5                             // 220000 - 440000 AMD
+				   replace e33_mid=520000 if e33==6                             // 440000 - 600000 AMD
+				   replace e33_mid=650000 if e33==7                             // 600000 - 700000 AMD  
+				   replace e33_mid=. if inlist(e33,8,9)                         // Refused to answer/ Do not know/ It's difficult to answer
 	
 	/*final amount*/
 	           
@@ -1033,13 +1057,7 @@ keep if ilo_wgt!=.
 			 replace ilo_prevocu_skill=4 if inlist(ilo_prevocu_isco08,10,11)
 				     lab val ilo_prevocu_skill ocu_skill_lab
 				     lab var ilo_prevocu_skill "Previous occupation (Skill level)"
-	
-* -------------------------------------------------------------------------------------------
-* -------------------------------------------------------------------------------------------
-*			General social protection ('ilo_gsp_unschemes') [done]
-* -------------------------------------------------------------------------------------------
-* -------------------------------------------------------------------------------------------	
-* Comment: - No information available.
+
 	
 ***********************************************************************************************
 *			PART 3.4. OUTSIDE LABOUR FORCE: ECONOMIC CHARACTERISTICS
@@ -1070,15 +1088,13 @@ keep if ilo_wgt!=.
 * -------------------------------------------------------------------------------------------		
 * Comment:
 
-capture gen  z60_11group = z60_12group  
-
 	gen ilo_olf_reason=.
-		replace ilo_olf_reason=1 if	(inlist(z60_11group,4,5,6,7,8) & ilo_lfs==3)			// Labour market
-		replace ilo_olf_reason=2 if	(inlist(z60_11group,1,2,3,9,10) & ilo_lfs==3)       	// Personal/Family-related
-		*replace ilo_olf_reason=3 if 									                    // Does not need/want to work
-		replace ilo_olf_reason=4 if (z60_11group==11 & ilo_lfs==3)							// Not elsewhere classified
-		replace ilo_olf_reason=4 if (ilo_olf_reason==. & ilo_lfs==3)						// Not elsewhere classified
-			    lab def reasons_lab 1 "1 - Labour market" 2 "2 - Personal / Family-related" ///
+		replace ilo_olf_reason=1 if	(inlist(z60_12group,7,8,9,10,13,14) & ilo_lfs==3)		// Labour market
+		replace ilo_olf_reason=2 if	(inlist(z60_12group,2,6) & ilo_lfs==3)       	        // Other labour market reasons
+		replace ilo_olf_reason=3 if (inlist(z60_12group,3,4,5,11) & ilo_lfs==3)             // Personal/Family-related
+		replace ilo_olf_reason=4 if z60_12group==18 &ilo_lfs==3  					        // Does not need/want to work
+		replace ilo_olf_reason=5 if (ilo_olf_reason==. & ilo_lfs==3)			            // Not elsewhere classified
+			    lab def reasons_lab 1 "1 - Labour market" 2 "Other labour market reasons" 3 "3 - Personal / Family-related" ///
 							        3 "3 - Does not need/want to work" 4 "4 - Not elsewhere classified"
 			    lab val ilo_olf_reason reasons_lab 
 			    lab var ilo_olf_reason "Labour market attachment (Reasons for not seeking a job)"

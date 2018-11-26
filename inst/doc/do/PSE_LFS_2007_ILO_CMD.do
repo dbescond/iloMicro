@@ -4,7 +4,7 @@
 * Files created: Standard variables on LFS Palestine
 * Authors: DPAU
 * Starting Date: 07 December 2017
-* Last updated: 21 December 2017
+* Last updated: 07 March 2018
 ***********************************************************************************************
 
 
@@ -16,18 +16,17 @@ clear all
 
 set more off
 
-
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+ 
+global path "J:\DPAU\MICRO"
 global country "PSE"
 global source "LFS"
 global time "2007"
-global input_file "LFS_2007.DTA"
+global inputFile "LFS_2007.DTA"
 
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
-
-
+ 
 ************************************************************************************
 
 * Important : if package « labutil » not already installed, install it in order to execute correctly the do-file
@@ -49,7 +48,7 @@ cd "$temppath"
 
 cd "$inpath"
 
-	use "${input_file}", clear	
+	use "${inputFile}", clear	
 	
 	rename *, lower
 		
@@ -475,6 +474,38 @@ if `Y' == 1995 {
 				lab val ilo_edu_attendance edu_attendance_lab
 				lab var ilo_edu_attendance "Education (Attendance)"		
 
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: the variable related to marital status in the questionnaire is "pr5". However, in the dataset, this variable is not included; instead, there is the 
+*          variable "maritals". This variable can be only mapped to the aggregate ilo variable. 
+* due to the "maritals" variable has three defined categories, it is supposed that the category "other" corresponds to widow/divorced/separated from the original variable (pr5)
+
+/*	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if                                           // Single
+		replace ilo_mrts_details=2 if                                           // Married
+		replace ilo_mrts_details=3 if                                           // Union / cohabiting
+		replace ilo_mrts_details=4 if                                           // Widowed
+		replace ilo_mrts_details=5 if                                           // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+		*/		
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(maritals,1,3)                      // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if maritals==2                               // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+				
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -1253,7 +1284,7 @@ if `Y' < 1999  {
 * -------------------------------------------------------------------------------------------
 
 	gen ilo_neet=.
-		replace ilo_neet=1 if inrange(ilo_age,15,24) & ilo_lfs!=1 & inlist(ilo_edu_attendance,2,3)
+		replace ilo_neet=1 if inrange(ilo_age,15,24) & ilo_lfs!=1 & reason!=3
 			lab def ilo_neet_lab 1 "Youth not in education, employment or training"
 			lab val ilo_neet ilo_neet_lab
 			lab var ilo_neet "Youth not in education, employment or training"  			

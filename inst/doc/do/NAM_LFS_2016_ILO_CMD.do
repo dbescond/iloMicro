@@ -2,127 +2,58 @@
 * DATASET USED: Namibia LFS 2016
 * NOTES: 
 * Files created: Standard variables on LFS Namibia 2016
-* Authors: Valia Bourmpoula
-* Who last updated the file: Valia Bourmpoula
+* Authors: ILO / Department of Statistics / DPAU
+
 * Starting Date: 1 February 2017
-* Last updated: 13 February 2017
+* Last updated: 08 February 2018
 **********************************************************************************************
 
-**********************************************************************************************
-*  CONTENTS																					*
-**********************************************************************************************
-* A. Set up work directory, file name, variables and function
-* B1. Load original dataset
-* B2. Define labels for the classifications ISIC and ISCO
-* C.  Map variables
-*		Part C1. Dataset settings variables
-*		Part C2. Social characteristics
-*		Part C3. Economic situation
-*				Part C3.1 Employment: economic characteristics for main job
-*				Part C3.2 Employment: economic characteristics for all jobs
-*				Part C3.3 Unemployment: economic characteristics
-*				Part C3.4 Outside labour force: economic characteristics
-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+********************************************************************************
+********************************************************************************
+*                                                                              *
+*          1.	Set up work directory, file name, variables and function       *
+*                                                                              *
+********************************************************************************
+********************************************************************************
 
-***********************************************************************************************
-***********************************************************************************************
-
-* 			A. SET UP WORK DIRECTORY, FILE NAME, VARIABLES AND FUNCTIONS
-
-***********************************************************************************************
-***********************************************************************************************
-
-**********************************************************************************************
-*  B1. Load original dataset																*
-**********************************************************************************************
 
 clear all 
 
 set more off
 
-global path "J:\COMMON\STATISTICS\DPAU\MICRO"
+global path "J:\DPAU\MICRO"
 global country "NAM"
 global source "LFS"
 global time "2016"
-global input_file "NAM_LFS_2016"
-
+global inputFile "NAM_LFS_2016.dta"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
 global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
-**********************************************************************************************
-*  B2. Define labels for the classifications ISIC and ISCO									*
-**********************************************************************************************
-					
-* Make a tempfile containing the labels for the classifications ISIC and ISCO 
-
-		* NOTE: if you want this do-file to run correctly, run it without breaks!
-
-cd "$temppath"
-	
-	tempfile labels
-		
-			* Import Framework
-			import excel 3_Framework.xlsx, sheet("Variable") firstrow
-
-			* Keep only the variable names, the codes and the labels associated to the codes
-			keep var_name code_level code_label
-
-			* Select only variables associated to isic and isco
-			keep if (substr(var_name,1,12)=="ilo_job1_ocu" | substr(var_name,1,12)=="ilo_job1_eco") & substr(var_name,14,.)!="aggregate"
-
-			* Destring codes
-			destring code_level, replace
-
-			* Reshape
-				
-				foreach classif in var_name {
-				
-					replace var_name=substr(var_name,14,.) if var_name==`classif'
-					
-					}
-				
-				reshape wide code_label, i(code_level) j(var_name) string
-				
-				foreach var of newlist isco08_2digits isco88_2digits isco08 isco88 isic4_2digits isic4 ///
-							isic3_2digits isic3 {
-							
-							gen `var'=code_level
-							
-							replace `var'=. if code_label`var'==""
-							
-							labmask `var' , val(code_label`var')
-							
-							}				
-				
-				drop code_label* code_level
-							
-			* Save file (as tempfile)
-			
-			save "`labels'"
-
-*********************************************************************************************
-* Load original dataset
-*********************************************************************************************
+********************************************************************************
+********************************************************************************
 
 cd "$inpath"
+	use ${inputFile}, clear
+	*renaming everything in lower case
+	*rename *, lower
 
-	use "${input_file}", clear
 
+********************************************************************************
+********************************************************************************
+*                                                                              *
+*			                      2. MAP VARIABLES                             *
+*                                                                              *
+********************************************************************************
+********************************************************************************
 
-***********************************************************************************************
-***********************************************************************************************
-
-*			C. MAP VARIABLES
-
-***********************************************************************************************
-***********************************************************************************************
-
-* ---------------------------------------------------------------------------------------------
-***********************************************************************************************
-*			PART C1. DATASET SETTINGS VARIABLES
-***********************************************************************************************
-* ---------------------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*			              PART 1. DATASET SETTINGS VARIABLES                   *
+*                                                                              *
+********************************************************************************
+* ------------------------------------------------------------------------------
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -154,11 +85,13 @@ cd "$inpath"
 		lab var ilo_time "Time (Gregorian Calendar)"
 		
 
-* ---------------------------------------------------------------------------------------------
-***********************************************************************************************
-*			PART C2. SOCIAL CHARACTERISTICS
-***********************************************************************************************
-* ---------------------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*			                PART 2. SOCIAL CHARACTERISTICS                     *
+*                                                                              * 
+********************************************************************************
+* ------------------------------------------------------------------------------
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -267,6 +200,7 @@ cd "$inpath"
 		replace ilo_edu_isced11=9 if inrange(HIGHEST_GRADE_MINOR,26,28)			// Master's or equivalent level
 		replace ilo_edu_isced11=10 if inlist(HIGHEST_GRADE_MINOR,29) 			// Doctoral or equivalent level
 		replace ilo_edu_isced11=11 if inlist(HIGHEST_GRADE_MINOR,30,99)			// Not elsewhere classified
+		replace ilo_edu_isced11=11 if ilo_edu_isced11==.						// Not elsewhere classified
 			label def isced_11_lab 1 "X - No schooling" 2 "0 - Early childhood education" 3 "1 - Primary education" 4 "2 - Lower secondary education" ///
 							5 "3 - Upper secondary education" 6 "4 - Post-secondary non-tertiary education" 7 "5 - Short-cycle tertiary education" ///
 							8 "6 - Bachelor's or equivalent level" 9 "7 - Master's or equivalent level" 10 "8 - Doctoral or equivalent level" 11 "9 - Not elsewhere classified"
@@ -302,6 +236,36 @@ cd "$inpath"
 			label val ilo_edu_attendance edu_att_lab
 			label var ilo_edu_attendance "Education (Attendance)"
 
+			
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+* Comment: 
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if MARITAL_STATUS==1                         // Single
+		replace ilo_mrts_details=2 if inlist(MARITAL_STATUS,2,3)                // Married
+		replace ilo_mrts_details=3 if MARITAL_STATUS==4                         // Union / cohabiting
+		replace ilo_mrts_details=4 if MARITAL_STATUS==5                         // Widowed
+		replace ilo_mrts_details=5 if inlist(MARITAL_STATUS,6,7)                // Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.			            // Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"				
+			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb') 
@@ -331,7 +295,6 @@ cd "$inpath"
 			lab val ilo_wap wap_lab
 			label var ilo_wap "Working age population"
 
-	drop ilo_age
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -351,7 +314,7 @@ cd "$inpath"
 		For E02-4, if Yes -> E10
 		For   E05, if No  -> E08
 		For   E08, if Yes -> E10
-	Note: The questionnaire is still based on the previous ICLS, so itӳ correct to include persons answering YES in E08 and E09.
+	Note: The questionnaire is still based on the previous ICLS, so itÓ³ correct to include persons answering YES in E08 and E09.
 
 	* UNEMPLOYMENT * 
 	[E36 ~ COULD_WORK_YN] - If (NAME) has been offered a job, would (NAME) have been ready to work during the last 7 days?
@@ -361,7 +324,7 @@ cd "$inpath"
 	For E38, if No  -> E40
 	[E37 ~ WHY_NOT_WORKING] - Since (NAME) was not working for pay, profit , family gain, or in agriculture  nor  available to start work, what was (NAME) doing in the past 7 days? 1=Retired, 2=Old-age, 3=Illness/disabled, 4=Homemaker, 5=Student/learner/scholar/pupil, 6=Income recipient, 7=Other
 	[E39 ~ LOOKING_WORK_CB_1-7] - What steps did (NAME) take to look for work/try to start business in the past 30 days? (A-F and G for Other)
-	[E40 ~ REASON_CANT_START_WORK] - What was the main reason that (NAME) didnӴ look for work or try to start his/ her business during the last 30 days?
+	[E40 ~ REASON_CANT_START_WORK] - What was the main reason that (NAME) didnÓ´ look for work or try to start his/ her business during the last 30 days?
 		4  = Already found work to start within one month   -> This category is included in the unemployed population [ilo_lfs==2] following the ICLS. */
 
 	 gen ilo_lfs=.
@@ -387,9 +350,13 @@ cd "$inpath"
 			lab var ilo_mjh "Multiple job holders"
 	
 	
-***********************************************************************************************
-*			PART C3.1. ECONOMIC CHARACTERISTICS FOR MAIN JOB 
-***********************************************************************************************		
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*	          PART 3.1 ECONOMIC CHARACTERISTICS FOR MAIN JOB                   *
+*                                                                              * 
+********************************************************************************
+* ------------------------------------------------------------------------------		
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -433,16 +400,36 @@ cd "$inpath"
 		[E15 (SECTOR_MAJOR2)] - What kind of activities are carried out at (NAME)'s work place? What are its main functions?
 		The codes are exactly the same as ISIC Rev. 4.				*/
 		
-			append using `labels'
-			* Use value label from this variable, afterwards drop everything related to this append
-			
+ 
 				* MAIN JOB:
 
 					* ISIC Rev. 4 - 2 digits
 						
-						gen ilo_job1_eco_isic4_2digits=SECTOR_MAJOR2 if ilo_lfs==1
-								lab values ilo_job1_eco_isic4_2digits isic4_2digits
-								lab var ilo_job1_eco_isic4_2digits "Economic activity (ISIC Rev. 4), 2 digit level - main job"
+		gen ilo_job1_eco_isic4_2digits=SECTOR_MAJOR2 if ilo_lfs==1
+			    lab def eco_isic4_2digits 1 "01 - Crop and animal production, hunting and related service activities"	2 "02 - Forestry and logging"	3 "03 - Fishing and aquaculture"	5 "05 - Mining of coal and lignite" ///
+                                          6 "06 - Extraction of crude petroleum and natural gas"	7 "07 - Mining of metal ores"	8 "08 - Other mining and quarrying"	9 "09 - Mining support service activities" ///
+                                          10 "10 - Manufacture of food products"	11 "11 - Manufacture of beverages"	12 "12 - Manufacture of tobacco products"	13 "13 - Manufacture of textiles" ///
+                                          14 "14 - Manufacture of wearing apparel"	15 "15 - Manufacture of leather and related products"	16 "16 - Manufacture of wood and of products of wood and cork, except furniture; manufacture of articles of straw and plaiting materials"	17 "17 - Manufacture of paper and paper products" ///
+                                          18 "18 - Printing and reproduction of recorded media"	19 "19 - Manufacture of coke and refined petroleum products"	20 "20 - Manufacture of chemicals and chemical products"	21 "21 - Manufacture of pharmaceuticals, medicinal chemical and botanical products" ///
+                                          22 "22 - Manufacture of rubber and plastics products"	23 "23 - Manufacture of other non-metallic mineral products"	24 "24 - Manufacture of basic metals"	25 "25 - Manufacture of fabricated metal products, except machinery and equipment" ///
+                                          26 "26 - Manufacture of computer, electronic and optical products"	27 "27 - Manufacture of electrical equipment"	28 "28 - Manufacture of machinery and equipment n.e.c."	29 "29 - Manufacture of motor vehicles, trailers and semi-trailers" ///
+                                          30 "30 - Manufacture of other transport equipment"	31 "31 - Manufacture of furniture"	32 "32 - Other manufacturing"	33 "33 - Repair and installation of machinery and equipment" ///
+                                          35 "35 - Electricity, gas, steam and air conditioning supply"	36 "36 - Water collection, treatment and supply"	37 "37 - Sewerage"	38 "38 - Waste collection, treatment and disposal activities; materials recovery" ///
+                                          39 "39 - Remediation activities and other waste management services"	41 "41 - Construction of buildings"	42 "42 - Civil engineering"	43 "43 - Specialized construction activities" ///
+                                          45 "45 - Wholesale and retail trade and repair of motor vehicles and motorcycles"	46 "46 - Wholesale trade, except of motor vehicles and motorcycles"	47 "47 - Retail trade, except of motor vehicles and motorcycles"	49 "49 - Land transport and transport via pipelines" ///
+                                          50 "50 - Water transport"	51 "51 - Air transport"	52 "52 - Warehousing and support activities for transportation"	53 "53 - Postal and courier activities" ///
+                                          55 "55 - Accommodation"	56 "56 - Food and beverage service activities"	58 "58 - Publishing activities"	59 "59 - Motion picture, video and television programme production, sound recording and music publishing activities" ///
+                                          60 "60 - Programming and broadcasting activities"	61 "61 - Telecommunications"	62 "62 - Computer programming, consultancy and related activities"	63 "63 - Information service activities" ///
+                                          64 "64 - Financial service activities, except insurance and pension funding"	65 "65 - Insurance, reinsurance and pension funding, except compulsory social security"	66 "66 - Activities auxiliary to financial service and insurance activities"	68 "68 - Real estate activities" ///
+                                          69 "69 - Legal and accounting activities"	70 "70 - Activities of head offices; management consultancy activities"	71 "71 - Architectural and engineering activities; technical testing and analysis"	72 "72 - Scientific research and development" ///
+                                          73 "73 - Advertising and market research"	74 "74 - Other professional, scientific and technical activities"	75 "75 - Veterinary activities"	77 "77 - Rental and leasing activities" ///
+                                          78 "78 - Employment activities"	79 "79 - Travel agency, tour operator, reservation service and related activities"	80 "80 - Security and investigation activities"	81 "81 - Services to buildings and landscape activities" ///
+                                          82 "82 - Office administrative, office support and other business support activities"	84 "84 - Public administration and defence; compulsory social security"	85 "85 - Education"	86 "86 - Human health activities" ///
+                                          87 "87 - Residential care activities"	88 "88 - Social work activities without accommodation"	90 "90 - Creative, arts and entertainment activities"	91 "91 - Libraries, archives, museums and other cultural activities" ///
+                                          92 "92 - Gambling and betting activities"	93 "93 - Sports activities and amusement and recreation activities"	94 "94 - Activities of membership organizations"	95 "95 - Repair of computers and personal and household goods" ///
+                                          96 "96 - Other personal service activities"	97 "97 - Activities of households as employers of domestic personnel"	98 "98 - Undifferentiated goods- and services-producing activities of private households for own use"	99 "99 - Activities of extraterritorial organizations and bodies"
+                lab val ilo_job1_eco_isic4_2digits eco_isic4_2digits
+                lab var ilo_job1_eco_isic4_2digits "Economic activity (ISIC Rev. 4), 2 digits level - main job"
 
 					* ISIC Rev. 4 - 1 digit
 					* For more information about the equivalence between ISIC Rev. 4 2- and 1- digits, please, see: http://unstats.un.org/unsd/cr/registry/regcst.asp?Cl=27
@@ -471,8 +458,14 @@ cd "$inpath"
 							replace ilo_job1_eco_isic4=21 if ilo_job1_eco_isic4_2digits==99
 							replace ilo_job1_eco_isic4=22 if ilo_job1_eco_isic4_2digits==.
 							replace ilo_job1_eco_isic4=. if ilo_lfs!=1
-								lab val ilo_job1_eco_isic4 isic4
-								lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
+									lab def eco_isic4_1digit 1 "A - Agriculture, forestry and fishing"	2 "B - Mining and quarrying"	3 "C - Manufacturing"	4 "D - Electricity, gas, steam and air conditioning supply" ///
+                                         5 "E - Water supply; sewerage, waste management and remediation activities"	6 "F - Construction"	7 "G - Wholesale and retail trade; repair of motor vehicles and motorcycles"	8 "H - Transportation and storage" ///
+                                         9 "I - Accommodation and food service activities"	10 "J - Information and communication"	11 "K - Financial and insurance activities"	12 "L - Real estate activities" ///
+                                         13 "M - Professional, scientific and technical activities"	14 "N - Administrative and support service activities"	15 "O - Public administration and defence; compulsory social security"	16 "P - Education" ///
+                                         17 "Q - Human health and social work activities"	18 "R - Arts, entertainment and recreation"	19 "S - Other service activities"	20 "T - Activities of households as employers; undifferentiated goods- and services-producing activities of households for own use" ///
+                                         21 "U - Activities of extraterritorial organizations and bodies"	22 "X - Not elsewhere classified"		
+									lab val ilo_job1_eco_isic4 eco_isic4_1digit
+									lab var ilo_job1_eco_isic4 "Economic activity (ISIC Rev. 4) - main job"
 
 					* Aggregated level 
 						gen ilo_job1_eco_aggregate=.
@@ -483,11 +476,11 @@ cd "$inpath"
 							replace ilo_job1_eco_aggregate=5 if inrange(ilo_job1_eco_isic4,7,14)
 							replace ilo_job1_eco_aggregate=6 if inrange(ilo_job1_eco_isic4,15,21)
 							replace ilo_job1_eco_aggregate=7 if ilo_job1_eco_isic4==22
-								lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
-									5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
-									6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
-								lab val ilo_job1_eco_aggregate eco_aggr_lab
-								lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
+									lab def eco_aggr_lab 1 "1 - Agriculture" 2 "2 - Manufacturing" 3 "3 - Construction" 4 "4 - Mining and quarrying; Electricity, gas and water supply" ///
+										5 "5 - Market Services (Trade; Transportation; Accommodation and food; and Business and administrative services)"  ///
+										6 "6 - Non-market services (Public administration; Community, social and other services and activities)" 7 "7 - Not classifiable by economic activity"					
+									lab val ilo_job1_eco_aggregate eco_aggr_lab
+									lab var ilo_job1_eco_aggregate "Economic activity (Aggregate) - main job"
 
 
 * -------------------------------------------------------------------------------------------
@@ -505,18 +498,25 @@ cd "$inpath"
 		* ISCO 88 - 2 digits
 			gen ilo_job1_ocu_isco88_2digits=OCCUPATION_MAJOR1 if ilo_lfs==1
 				replace ilo_job1_ocu_isco88_2digits=. if ilo_lfs==1 & OCCUPATION_MAJOR1==90
-							lab values ilo_job1_ocu_isco88_2digits isco88_2digits
-							lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level"
-
+					lab def ocu_isco88_2digits 1 "01 - Armed forces"	11 "11 - Legislators and senior officials"	12 "12 - Corporate managers"	13 "13 - General managers"	///
+                                           21 "21 - Physical, mathematical and engineering science professionals"	22 "22 - Life science and health professionals"	23 "23 - Teaching professionals"	24 "24 - Other professionals"	///
+                                           31 "31 - Physical and engineering science associate professionals"	32 "32 - Life science and health associate professionals"	33 "33 - Teaching associate professionals"	34 "34 - Other associate professionals"	///
+                                           41 "41 - Office clerks"	42 "42 - Customer services clerks"	51 "51 - Personal and protective services workers"	52 "52 - Models, salespersons and demonstrators"	///
+                                           61 "61 - Skilled agricultural and fishery workers"	62 "62 - Subsistence agricultural and fishery workers"	71 "71 - Extraction and building trades workers"	72 "72 - Metal, machinery and related trades workers"	///
+                                           73 "73 - Precision, handicraft, craft printing and related trades workers"	74 "74 - Other craft and related trades workers"	81 "81 - Stationary plant and related operators"	82 "82 - Machine operators and assemblers"	///
+                                           83 "83 - Drivers and mobile plant operators"	91 "91 - Sales and services elementary occupations"	92 "92 - Agricultural, fishery and related labourers"	93 "93 - Labourers in mining, construction, manufacturing and transport"	
+					lab values ilo_job1_ocu_isco88_2digits ocu_isco88_2digits
+					lab var ilo_job1_ocu_isco88_2digits "Occupation (ISCO-88), 2 digit level - main job"
+					
 		* ISCO 88 - 1 digit
 			gen ilo_job1_ocu_isco88=int(ilo_job1_ocu_isco88_2digits/10) if ilo_lfs==1
 				replace ilo_job1_ocu_isco88=10 if ilo_job1_ocu_isco88==0 & ilo_lfs==1
 				replace ilo_job1_ocu_isco88=11 if ilo_job1_ocu_isco88==. & ilo_lfs==1
-							lab def isco88_1dig_lab 1 "1 - Managers" 2 "2 - Professionals" 3 "Technicians and associate professionals" 4 "4 - Clerks" 5 "5 - Service workers and shop and market sales workers" ///
-									6 "6 - Skilled agricultural and fishery workers" 7 "7 - Craft and related trades workers" 8 "8 - Plant and machine operators, and assemblers" ///
-									9 "9 - Elementary occupations" 10 "0 - Armed forces occupations" 11 "X - Not elsewhere classified"
-							lab val ilo_job1_ocu_isco88 isco88_1dig_lab
-							lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88)"	
+						lab def ocu_isco88_1digit 1 "1 - Legislators, senior officials and managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerks"	///
+                                          5 "5 - Service workers and shop and market sales workers"	6 "6 - Skilled agricultural and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces"	11 "11 - Not elsewhere classified"		
+						lab val ilo_job1_ocu_isco88 ocu_isco88_1digit
+						lab var ilo_job1_ocu_isco88 "Occupation (ISCO-88) - main job"
 
 		* Aggregate
 			gen ilo_job1_ocu_aggregate=.
@@ -527,10 +527,10 @@ cd "$inpath"
 				replace ilo_job1_ocu_aggregate=5 if ilo_job1_ocu_isco88==9
 				replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco88==10
 				replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco88==11
-					lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
-									4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
-					lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-					lab var ilo_job1_ocu_aggregate "Occupation (Aggregate)"
+						lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
+									 4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
+						lab val ilo_job1_ocu_aggregate ocu_aggr_lab
+						lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
 	
 		* Skill level
 			gen ilo_job1_ocu_skill=.
@@ -538,9 +538,9 @@ cd "$inpath"
 				replace ilo_job1_ocu_skill=2 if inlist(ilo_job1_ocu_isco88,4,5,6,7,8)
 				replace ilo_job1_ocu_skill=3 if inlist(ilo_job1_ocu_isco88,1,2,3)
 				replace ilo_job1_ocu_skill=4 if inlist(ilo_job1_ocu_isco88,10,11)
-					lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
-					lab val ilo_job1_ocu_skill ocu_skill_lab
-					lab var ilo_job1_ocu_skill "Occupation (Skill level)"
+						lab def ocu_skill_lab 1 "1 - Skill level 1 (low)" 2 "2 - Skill level 2 (medium)" 3 "3 - Skill levels 3 and 4 (high)" 4 "4 - Not elsewhere classified"
+						lab val ilo_job1_ocu_skill ocu_skill_lab
+						lab var ilo_job1_ocu_skill "Occupation (Skill level) - main job"
 
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -728,9 +728,13 @@ cd "$inpath"
 	* Self-employed - No information
 	   
 
-***********************************************************************************************
-*			PART C3.2. ECONOMIC CHARACTERISTICS FOR ALL JOBS 
-***********************************************************************************************		
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*	          PART 3.2 ECONOMIC CHARACTERISTICS FOR ALL JOBS                   *
+*                                                                              * 
+********************************************************************************
+* ------------------------------------------------------------------------------			
 				
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -749,9 +753,13 @@ cd "$inpath"
 	* Not available
 
 	
-***********************************************************************************************
-*			PART C3.3. UNEMPLOYMENT: ECONOMIC CHARACTERISTICS
-***********************************************************************************************		
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*	          PART 3.3 UNEMPLOYMENT: ECONOMIC CHARACTERISTICS                  *
+*                                                                              * 
+********************************************************************************
+* ------------------------------------------------------------------------------		
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -806,9 +814,13 @@ cd "$inpath"
 		* Not available
 
 	
-***********************************************************************************************
-*			PART C3.4. OUTSIDE LABOUR FORCE: ECONOMIC CHARACTERISTICS
-***********************************************************************************************		
+* ------------------------------------------------------------------------------
+********************************************************************************
+*                                                                              *
+*	        PART 3.4 OUTSIDE LABOUR FORCE: ECONOMIC CHARACTERISTICS            *
+*                                                                              * 
+********************************************************************************
+* ------------------------------------------------------------------------------	
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
@@ -872,26 +884,27 @@ cd "$inpath"
 			lab var ilo_neet "Youth not in education, employment or training"
 
 
-***********************************************************************************************
-***********************************************************************************************
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			                    SAVE RESULTS                                   *            
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
 
-*			D. SAVE ILO-VARIABLES IN A NEW DATASET
+* ------------------------------------------------------------------------------
+*                       Preparation of final dataset                           *
+* ------------------------------------------------------------------------------
 
-***********************************************************************************************
-***********************************************************************************************
-
-* -------------------------------------------------------------
-* 	Prepare final datasets
-* -------------------------------------------------------------
-
-* 1 - Full dataset with original variables and ILO ones
+cd "$outpath"
+	drop ilo_age
 	
-	cd "$outpath"
-
-        compress
-		saveold NAM_LFS_2016_FULL, version(12) replace
-
-* 2 - Dataset with only 'ILO' variables
+	/* Variables computed in-between */
+	*drop
+	compress
+		
+	/* Save dataset including original and ilo variables*/
+	save ${country}_${source}_${time}_FULL,  replace		
 	
-		keep ilo*
-		saveold NAM_LFS_2016_ILO, version(12) replace
+	*Save file only containing ilo_* variables
+	keep ilo*
+	save ${country}_${source}_${time}_ILO, replace
+		

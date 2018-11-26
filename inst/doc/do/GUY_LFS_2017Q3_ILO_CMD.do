@@ -4,7 +4,7 @@
 * Authors: ILO / Department of Statistics / DPAU
 
 * Starting Date: 30 November 2017
-* Last updated: 08 February 2018
+* Last updated: 22 May 2018
 ***********************************************************************************************
 
 ***********************************************************************************************
@@ -23,10 +23,9 @@ set more off
 global path "J:\DPAU\MICRO"
 global country "GUY"
 global source "LFS"
-global time "2017"
+global time "2017Q3"
 global inputFile "GUY_LFS_2017Q3"
 global inpath "${path}\\${country}\\${source}\\${time}\ORI"
-global temppath "${path}\_Admin"
 global outpath "${path}\\${country}\\${source}\\${time}"
 
 ************************************************************************************
@@ -229,7 +228,35 @@ cd "$inpath"
 		    lab def edu_attendance_lab 1 "1 - Attending" 2 "2 - Not attending" 3 "3 - Not elsewhere classified"
 		    lab val ilo_edu_attendance edu_attendance_lab
 		    lab var ilo_edu_attendance "Education (Attendance)"
-					
+
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+*			           Marital status ('ilo_mrts') 	                           *
+* ------------------------------------------------------------------------------
+* ------------------------------------------------------------------------------
+	
+	* Detailed
+	gen ilo_mrts_details=.
+	    replace ilo_mrts_details=1 if q1_05==1					// Single
+		replace ilo_mrts_details=2 if q1_05==3					// Married
+		replace ilo_mrts_details=3 if q1_05==2					// Union / cohabiting
+		replace ilo_mrts_details=4 if q1_05==6					// Widowed
+		replace ilo_mrts_details=5 if inlist(q1_05,4,5)			// Divorced / separated
+		replace ilo_mrts_details=6 if ilo_mrts_details==.		// Not elsewhere classified
+		        label define label_mrts_details 1 "1 - Single" 2 "2 - Married" 3 "3 - Union / cohabiting" ///
+				                                4 "4 - Widowed" 5 "5 - Divorced / separated" 6 "6 - Not elsewhere classified"
+		        label values ilo_mrts_details label_mrts_details
+		        lab var ilo_mrts_details "Marital status"
+				
+	* Aggregate
+	gen ilo_mrts_aggregate=.
+	    replace ilo_mrts_aggregate=1 if inlist(ilo_mrts_details,1,4,5)          // Single / Widowed / Divorced / Separated
+		replace ilo_mrts_aggregate=2 if inlist(ilo_mrts_details,2,3)            // Married / Union / Cohabiting
+		replace ilo_mrts_aggregate=3 if ilo_mrts_aggregate==. 			        // Not elsewhere classified
+		        label define label_mrts_aggregate 1 "1 - Single / Widowed / Divorced / Separated" 2 "2 - Married / Union / Cohabiting" 3 "3 - Not elsewhere classified"
+		        label values ilo_mrts_aggregate label_mrts_aggregate
+		        lab var ilo_mrts_aggregate "Marital status (Aggregate levels)"
+			
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
 *			Disability status ('ilo_dsb')
@@ -777,132 +804,3 @@ cd "$outpath"
 		keep ilo*
 
 		save ${country}_${source}_${time}_ILO, replace
-
-		
-		
-* ------------------------
-* 	Prepare key tables
-* ------------------------
-
-***** Sheet POP *****
-* Table 141
-	tab ilo_age_5yrbands ilo_sex [iw=ilo_wgt] if ilo_wap==1
-
-* Table 142
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_wap==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_wap==1 & ilo_sex==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_wap==1 & ilo_sex==2
-
-
-***** Sheet EAP *****
-* Table 5
-	tab ilo_age_5yrbands ilo_sex [iw=ilo_wgt] if inlist(ilo_lfs,1,2)
-
-* Table 7
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if inlist(ilo_lfs,1,2)
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if inlist(ilo_lfs,1,2) & ilo_sex==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if inlist(ilo_lfs,1,2) & ilo_sex==2
-
-
-***** Sheet EMP *****
-* Table 11
-	tab ilo_age_5yrbands ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 13
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==2
-
-* Table 15
-	tab ilo_job1_ste_icse93 ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 20
-	tab ilo_job1_ins_sector ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 95
-	tab ilo_job1_eco_isic4 ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 97
-	tab ilo_job1_eco_isic4_2digits ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 100
-	tab ilo_job1_ocu_isco08 ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 102
-	tab ilo_job1_ocu_isco08_2digits ilo_sex [iw=ilo_wgt] if ilo_lfs==1
-
-* Table 109
-	tab ilo_job1_eco_isic4 ilo_job1_ocu_isco08 [iw=ilo_wgt] if ilo_lfs==1
-
-
-***** Sheet IFL *****
-* Not feasible
-
-
-***** Sheet TRU *****
-* Not feasible
-
-
-***** Sheet EES *****
-* Table 96
-	tab ilo_job1_eco_isic4 ilo_sex [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-
-* Table 101
-	tab ilo_job1_ocu_isco08 ilo_sex [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-
-
-***** Sheet UNE *****
-* Table 28
-	tab ilo_age_5yrbands ilo_sex [iw=ilo_wgt] if ilo_lfs==2
-
-* Table 30
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2 & ilo_sex==1
-	tab ilo_edu_isced11 ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2 & ilo_sex==2
-
-* Table 31
-	tab ilo_dur_details ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2
-	tab ilo_dur_details ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2 & ilo_sex==1
-	tab ilo_dur_details ilo_age_10yrbands [iw=ilo_wgt] if ilo_lfs==2 & ilo_sex==2
-
-
-***** Sheet EIP *****
-* Table 39
-	tab ilo_age_aggregate ilo_sex [iw=ilo_wgt] if ilo_dis==1
-
-* Table 40
-	tab ilo_sex ilo_neet [iw=ilo_wgt]
-
-
-***** Sheet HOW *****
-* Table 145
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==2
-	
-* Table 149
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_lfs==1 & ilo_sex==2
-
-* Table 146
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==2
-
-* Table 150
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==1
-	mean ilo_joball_how_usual [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==2
-
-	
-***** Sheet EAR *****
-* Table 50
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==1
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==2
-	
-* Table 52
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==1
-	mean ilo_job1_lri_ees [iw=ilo_wgt] if ilo_job1_ste_icse93==1 & ilo_sex==2

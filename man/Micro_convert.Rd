@@ -16,7 +16,7 @@ Micro_convert(in_file = NULL, ref_area = NULL, source = NULL,
 
 \item{time}{, character, time, use to rebuilt a specific dataset, default NULL means all time will be takeinto account.}
 
-\item{ori}{, boolean fefault  = TRUE, look inside ORI folder to detect sav file to convert in dta}
+\item{ori}{, boolean default  = TRUE, look inside ORI folder to detect sav file to convert in dta}
 }
 \description{
 faster method to reencode file in correct format
@@ -27,7 +27,7 @@ Support
 \examples{
 ## Not run:
 
-Micro_convert(in_file = 'J:/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav')
+Micro_convert(in_file = 'J:/DPAU/MICRO/ARG/EPH/2003Q3/ORI/Individual_t303.sav', encoding = 'latin1')
 
 Micro_convert(ref_area = 'ARG', source = 'EPH', time = '2010', encoding  = 'latin1')
 

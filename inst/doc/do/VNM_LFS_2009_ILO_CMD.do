@@ -449,41 +449,48 @@ cd "$inpath"
 		
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------
-*			Occupation ('ilo_job1_ocu_isco88') [done]
+*			Occupation ('ilo_job1_ocu_isco08') [done]
 * -------------------------------------------------------------------------------------------
 * -------------------------------------------------------------------------------------------		
 * Comment: - The country uses its own classification that is based on ISCO 08. 
 *          - It can be mapped to ISCO 08 at 1 digit level.
 
    * MAIN JOB:
-   	 gen occup_1dig=int(q39/100) if ilo_lfs==1 & q39>0
-
-   * ISCO 08 - 1 digit:
-	 gen ilo_job1_ocu_isco08=.
-	     replace ilo_job1_ocu_isco08 = 11 if occup_1dig==. & ilo_lfs==1                     // Not elsewhere classified
-		 replace ilo_job1_ocu_isco08 = occup_1dig if (ilo_job1_ocu_isco08==. & ilo_lfs==1)  // The rest of the occupations
-		 replace ilo_job1_ocu_isco08 = 10 if ilo_job1_ocu_isco08==0 & ilo_lfs==1            // Armed forces
-	             lab def ocu_isco08 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
-                                    5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
-                                    9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
-		         lab values ilo_job1_ocu_isco08 ocu_isco08
-				 lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08) - main job"
-	
-  * Aggregate
-	gen ilo_job1_ocu_aggregate=.
+   gen occup_1dig=int(q39/100) if ilo_lfs==1 & q39>0
+	 
+    ***********
+    * MAIN JOB:
+    ***********
+			
+    *---------------------------------------------------------------------------
+	* ISCO 08
+	*---------------------------------------------------------------------------
+	* 1-digit level 				
+	gen ilo_job1_ocu_isco08=.
+	    replace ilo_job1_ocu_isco08=11 if inlist(occup_1dig,.) & ilo_lfs==1                 // Not elsewhere classified
+		replace ilo_job1_ocu_isco08=occup_1dig if (ilo_job1_ocu_isco08==. & ilo_lfs==1)     // The rest of the occupations
+		replace ilo_job1_ocu_isco08=10 if (ilo_job1_ocu_isco08==0 & ilo_lfs==1)             // Armed forces
+		        lab def ocu_isco08_1digit 1 "1 - Managers"	2 "2 - Professionals"	3 "3 - Technicians and associate professionals"	4 "4 - Clerical support workers"	///
+                                          5 "5 - Service and sales workers"	6 "6 - Skilled agricultural, forestry and fishery workers"	7 "7 - Craft and related trades workers"	8 "8 - Plant and machine operators, and assemblers"	///
+                                          9 "9 - Elementary occupations"	10 "0 - Armed forces occupations"	11 "X - Not elsewhere classified"		
+				lab val ilo_job1_ocu_isco08 ocu_isco08_1digit
+				lab var ilo_job1_ocu_isco08 "Occupation (ISCO-08) - main job"
+				
+	* Aggregate:			
+    gen ilo_job1_ocu_aggregate=.
 	    replace ilo_job1_ocu_aggregate=1 if inrange(ilo_job1_ocu_isco08,1,3)   
-		replace ilo_job1_ocu_aggregate=2 if inlist(ilo_job1_ocu_isco08,4,5)
-		replace ilo_job1_ocu_aggregate=3 if inlist(ilo_job1_ocu_isco08,6,7)
-		replace ilo_job1_ocu_aggregate=4 if ilo_job1_ocu_isco08==8
-		replace ilo_job1_ocu_aggregate=5 if ilo_job1_ocu_isco08==9
-		replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco08==10
-		replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco08==11
-				lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
-									 4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
-				lab val ilo_job1_ocu_aggregate ocu_aggr_lab
-				lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
+	    replace ilo_job1_ocu_aggregate=2 if inlist(ilo_job1_ocu_isco08,4,5)
+	    replace ilo_job1_ocu_aggregate=3 if inlist(ilo_job1_ocu_isco08,6,7)
+	    replace ilo_job1_ocu_aggregate=4 if ilo_job1_ocu_isco08==8
+	    replace ilo_job1_ocu_aggregate=5 if ilo_job1_ocu_isco08==9
+	    replace ilo_job1_ocu_aggregate=6 if ilo_job1_ocu_isco08==10
+	    replace ilo_job1_ocu_aggregate=7 if ilo_job1_ocu_isco08==11
+		  	    lab def ocu_aggr_lab 1 "1 - Managers, professionals, and technicians" 2 "2 - Clerical, service and sales workers" 3 "3 - Skilled agricultural and trades workers" ///
+				 					 4 "4 - Plant and machine operators, and assemblers" 5 "5 - Elementary occupations" 6 "6 - Armed forces" 7 "7 - Not elsewhere classified"
+			    lab val ilo_job1_ocu_aggregate ocu_aggr_lab
+			    lab var ilo_job1_ocu_aggregate "Occupation (Aggregate) - main job"	
 		
-  * Skill level
+	* Skill level
 	gen ilo_job1_ocu_skill=.
 	    replace ilo_job1_ocu_skill=1 if ilo_job1_ocu_isco08==9                  // Low
 		replace ilo_job1_ocu_skill=2 if inlist(ilo_job1_ocu_isco08,4,5,6,7,8)   // Medium

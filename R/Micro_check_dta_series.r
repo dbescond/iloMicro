@@ -53,7 +53,7 @@ Micro_check_dta_series <- function(		# path = NULL,
 	for (i in 1:nrow(workflow)){
 		########## process
 		X <- Micro_load(path = workflow$file[i], asFactor = TRUE) %>% mutate_if(is.labelled, funs(as_factor(., "both"))) %>% filter(ilo_wap %in% c(1, '1'))
-		ref <- colnames(X) %>% as_data_frame %>% 
+		ref <- colnames(X) %>% enframe(name = NULL) %>% 
 					filter(	!value %in% c('ilo_key','ilo_wgt','ilo_time'), 
 							!str_detect(value, '2digits'), 
 							!str_detect(value, '_lri_'),
@@ -120,9 +120,9 @@ Micro_check_dta_series <- function(		# path = NULL,
 				ts_group <- list()
 					j <- 1
 					new_check <- check %>% filter(label %in% ref_label[j]) %>% select(Stime, check)
-					if(stringr::str_sub(ref_var, -1,-1) %in% 'A') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"year") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 1}
-					if(stringr::str_sub(ref_var, -1,-1) %in% 'Q') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"quarter") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 4}
-					if(stringr::str_sub(ref_var, -1,-1) %in% 'M') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"month") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 12}
+					if(stringr::str_sub(ref_var, -1,-1) %in% 'A') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"year") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 1}
+					if(stringr::str_sub(ref_var, -1,-1) %in% 'Q') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"quarter") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 4}
+					if(stringr::str_sub(ref_var, -1,-1) %in% 'M') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"month") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 12}
 		
 		
 					new_check <- new_check  %>% full_join(ref_time_abnd, by = 'Stime') %>% arrange(Stime)  
@@ -132,9 +132,9 @@ Micro_check_dta_series <- function(		# path = NULL,
 			if(length(ref_label) > 1){
 					for (j in 2:length(ref_label)){
 						new_check <- check %>% filter(label %in% ref_label[j]) %>% select(Stime, check)
-						if(stringr::str_sub(ref_var, -1,-1) %in% 'A') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"year") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 1}
-						if(stringr::str_sub(ref_var, -1,-1) %in% 'Q') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"quarter") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 4}
-						if(stringr::str_sub(ref_var, -1,-1) %in% 'M') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"month") %>% as_data_frame %>% rename(Stime  = value); freq_ref <- 12}
+						if(stringr::str_sub(ref_var, -1,-1) %in% 'A') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"year") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 1}
+						if(stringr::str_sub(ref_var, -1,-1) %in% 'Q') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"quarter") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 4}
+						if(stringr::str_sub(ref_var, -1,-1) %in% 'M') {ref_time_abnd <- seq.Date(min(check$Stime),max(check$Stime),"month") %>% enframe(name = NULL) %>% rename(Stime  = value); freq_ref <- 12}
 				
 						new_check <- new_check  %>% full_join(ref_time_abnd, by = 'Stime') %>% arrange(Stime)  
 						ts_group <- cbind(ts_group,xts(new_check$check, new_check$Stime) %>% ts(., start= min(as.numeric(stringr::str_sub(new_check$Stime,1,4))), freq = freq_ref))

@@ -6,10 +6,11 @@
 \usage{
 Micro_process(ref_area = NULL, source = NULL, time = NULL,
   indicator = NULL, ktest = c(max = 15, min = 5, threshold = 0.334),
-  saveCSV = TRUE, ilo_time = NULL, delete = FALSE, collection = "YI",
-  keep_count = TRUE, query = NULL, print_ind = TRUE, validate = FALSE,
-  consolidate = "1", skip = NULL, timefrom = NULL, timeto = NULL,
-  output = "ilostat", PUB = FALSE, QUERY = NULL)
+  saveCSV = TRUE, ilo_time = NULL, delete = FALSE,
+  collection = "YI", keep_count = TRUE, query = NULL,
+  print_ind = TRUE, validate = FALSE, consolidate = "1",
+  skip = NULL, timefrom = NULL, timeto = NULL, output = "ilostat",
+  PUB = FALSE, QUERY = NULL)
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
@@ -60,17 +61,12 @@ faster method to recode, order, add label of categorical variables
 \examples{
 ## Not run:
 
-# test that
- Micro_process(ref_area = 'ZAF', source = 'QLFS', time = '2016Q1')
-
 # process the all time series validate in the workflowflow
- Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE)
+ Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE, time = '2016Q1')
 
 
-# run the entire process for one country only
-Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, consolidate = '123',ref_area ='ZAF', source = 'LFS')
-# run the entire process
-Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', skip = 'EULFS')
+# run the entire process for one country only (go for publication on ilostat)
+Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
 
 ## End(**Not run**)
 }

@@ -4,8 +4,8 @@
 \alias{Micro_load}
 \title{helper to load ilo.dta file for the processing process}
 \usage{
-Micro_load(path = NULL, ilo_time = NULL, query = NULL, asFactor = FALSE,
-  Pending = NULL)
+Micro_load(path = NULL, ilo_time = NULL, query = NULL,
+  asFactor = FALSE, Pending = NULL)
 }
 \arguments{
 \item{path}{dta or zip file path for loading ilo microdataset pre precessed, default 'tpl' means that predifine example will be load, if NULL load only ilo framework.}

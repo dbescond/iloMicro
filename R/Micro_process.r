@@ -30,17 +30,12 @@
 #' @examples
 #' ## Not run:
 #'
-#' # test that
-#'  Micro_process(ref_area = 'ZAF', source = 'QLFS', time = '2016Q1')
-#'
 #' # process the all time series validate in the workflowflow
-#'  Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE)
+#'  Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE, time = '2016Q1')
 #'
 #'
-#' # run the entire process for one country only
-#' Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, consolidate = '123',ref_area ='ZAF', source = 'LFS')
-#' # run the entire process
-#' Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', skip = 'EULFS')
+#' # run the entire process for one country only (go for publication on ilostat)
+#' Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
 #'
 #' ## End(**Not run**)
 #' @export
@@ -787,8 +782,13 @@ Micro_process_time <- function(		path = NULL,
 	} else {
 			ilo_tpl$Mapping_indicator <- ilo_tpl$Mapping_indicator %>% filter(Is_Validate %in% c('TRUE', 'FALSE'))
 	}
+	ref <- paste0(colnames(df), collapse = '/')
+	
+	if(!str_detect(ref, 'sample_count')) {
 	
 	df <- df %>% group_by_(.dots = colnames(df)[!colnames(df) %in% 'ilo_wgt']) %>% summarise(sample_count = n(), ilo_wgt = sum(ilo_wgt)) %>% ungroup
+	}
+
 	invisible(gc(reset = TRUE))
 	invisible(gc(reset = TRUE))
 	
@@ -1058,7 +1058,7 @@ if(nrow(workflow)> 0){
 				
 				if(test_freq == 0) {print('error freq not correct')}
 					
-				test_dir_available <- list.files() %>% as_data_frame %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
+				test_dir_available <- list.files() %>% as_tibble %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
 					
 				if(nrow(test_dir_available) > 0 & !is.null(QUERY)){
 				
@@ -1278,7 +1278,7 @@ if(nrow(workflow)> 0){
 			
 				if(test_freq == 0) {print('error freq not correct')}
 				
-				test_dir_available <- list.files() %>% as_data_frame %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
+				test_dir_available <- list.files() %>% as_tibble %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
 					
 				if(nrow(test_dir_available) > 0 & !is.null(QUERY)){
 				
@@ -1536,7 +1536,7 @@ if(nrow(workflow)> 0){
 			
 				if(test_freq == 0) {print('error freq not correct')}
 				
-				test_dir_available <- list.files() %>% as_data_frame %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
+				test_dir_available <- list.files() %>% as_tibble %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
 					
 				if(nrow(test_dir_available) > 0 & !is.null(QUERY)){
 				
@@ -1749,7 +1749,7 @@ Micro_process_all <- function(		ref_area =  NULL,
 		
 		if(!str_detect(test[1], 'Error')){
 		
-			ref <- list.files() %>% as_data_frame %>% filter(!str_detect(value, 'ilostat')) %>% t %>% as.character
+			ref <- list.files() %>% as_tibble %>% filter(!str_detect(value, 'ilostat')) %>% t %>% as.character
 			ref <- ref[!ref %in% discard_files] # detect non validate file 
 		
 		
@@ -1787,6 +1787,7 @@ Micro_process_all <- function(		ref_area =  NULL,
 		 
 			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_IFL_ECO_NB', 'EMP_IFLS_SEX_IFL_ECO_NB')), 'ECO'))
 			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_MTS_IFL_NB', 'EMP_IFLS_SEX_MTS_IFL_NB')), 'MTS'))
+			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_GEO_IFL_NB', 'EMP_IFLS_SEX_GEO_IFL_NB')), 'MTS'))
 					
 		
 
@@ -1846,6 +1847,51 @@ if(is.null(ref_area) &is.null(QUERY) ) {
 create_informality <- function(df, test){
 
 if(test %in% 'ECO' & nrow(df) > 0){
+
+
+
+	df <- df %>% 	filter(!classif2 %in% 'ECO_AGNAG_AGR') %>% 
+			mutate(	
+					classif1 = ifelse(classif1 %in% c('IFL_NATURE_TOTAL', 'IFL_PROD_TOTAL'), 'IFL_COMP_EMP', classif1), 
+					indicator = 'IFL_4IEM_SEX_ECO_IFL_NB') %>% 
+			
+			group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
+			summarise(	obs_value = first(obs_value),
+						obs_status = first(obs_status),
+						note_classif = first(note_classif),
+						note_indicator = first(note_indicator),
+						note_source = first(note_source),
+						sample_count = first(sample_count),
+						table_test = min(table_test),
+						ilo_wgt = first(ilo_wgt),
+						freq_code = first(freq_code)				
+						) %>% 
+			ungroup %>% 
+			mutate(
+					classif1 = ifelse(classif1 %in% c('IFL_NATURE_INFORMAL'), 						'IFL_COMP_INFEMP', classif1), 
+					classif1 = ifelse(classif1 %in% c('IFL_NATURE_FORMAL'), 						'IFL_COMP_FRMEMP', classif1), 
+					classif1 = ifelse(classif1 %in% c('IFL_PROD_FORMAL'), 							'IFL_COMP_FRMSECTOR', classif1), 
+					classif1 = ifelse(classif1 %in% c('IFL_PROD_INFORMAL', 'IFL_PROD_HOUSEHOLD'), 	'IFL_COMP_OFS', classif1), 
+					classif2 = classif2 %>% stringr::str_replace('ECO_AGNAG_', 	'ECO_TOTNAG_')
+			
+			) %>% group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
+			summarise (obs_value = sum(obs_value),
+						obs_status = first(obs_status),
+						note_classif = first(note_classif),
+						note_indicator = first(note_indicator),
+						note_source = first(note_source),
+						sample_count = sum(sample_count),
+						table_test = min(table_test),
+						ilo_wgt = sum(ilo_wgt),
+						freq_code = first(freq_code)) %>% 
+			ungroup %>% 
+			mutate(PASS = classif2, 
+					classif2 = classif1, 
+					classif1 = PASS) %>% select(-PASS)
+return(df)	
+} 
+
+if(test %in% 'GEO' & nrow(df) > 0){
 
 
 

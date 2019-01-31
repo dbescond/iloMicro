@@ -78,7 +78,7 @@ Micro_prepare_MEX_ENOE <- function(ref_area, source, time, wd){
 	rm(meta)	
 	
 	ref_files <- list.files() %>% 
-					as_data_frame %>% 
+					enframe(name = NULL) %>% 
 					filter(str_detect(tolower(value), 'dbf'), !str_detect(tolower(value), '.zip')) 
 
 				
@@ -139,7 +139,7 @@ Micro_prepare_CAN_LFS <- function(ref_area, source, time, wd){
 	setwd(wd)
 	}
 
-	ref_files <- list.files() %>% as_data_frame 
+	ref_files <- list.files() %>% enframe(name = NULL) 
 
 	ref_layout <- ref_files %>% filter(str_sub(value, -10, -1) %in% 'layout.txt') %>% t %>% as.character
 	Layout <- read_fwf(ref_layout, 
@@ -163,7 +163,7 @@ Micro_prepare_CAN_LFS <- function(ref_area, source, time, wd){
 	if(length(ref_dataset) == 0){ 
 			message(paste(ref_area, source, time, 'No datafile found'))	
 			return(NULL)}
-	DATA <- readLines(ref_dataset)%>% as_data_frame
+	DATA <- readLines(ref_dataset)%>% enframe(name = NULL)
 
 	for (j in 1:nrow(Layout)){
 	
@@ -222,10 +222,10 @@ Micro_prepare_BRA_PNADC <- function(ref_area, source, time, wd){
 	setwd(wd)
 	}
 	
-	ref_files <- list.files() %>% as_data_frame 
+	ref_files <- list.files() %>% enframe(name = NULL) 
 
 	ref_layout <- ref_files %>% filter(str_sub(value, -4, -1) %in% '.txt', str_detect(tolower(value), 'input')) %>% t %>% as.character
-	test <- readLines(ref_layout) %>% as_data_frame %>% mutate(ref = 1:n()) 
+	test <- readLines(ref_layout) %>% enframe(name = NULL) %>% mutate(ref = 1:n()) 
 	first_line <- test %>% filter(tolower(value) %in% 'input') %>% .$ref + 1
 	last_line <- test %>% filter(tolower(value) %in% 'run;') %>% .$ref -2
 	
@@ -235,7 +235,7 @@ Micro_prepare_BRA_PNADC <- function(ref_area, source, time, wd){
 				str_replace_all('    ', ' ') %>% 
 				str_replace_all('   ', ' ') %>% 
 				str_replace_all('  ', ' ') %>%
-				as_data_frame %>%
+				enframe(name = NULL) %>%
 				separate(value, c("Start", "Name", "Size", 'Label'), sep = ' ', extra = 'merge') %>% 
 				mutate(Label = str_sub(Label, 4, -4))%>% 
 				mutate(Type = ifelse(str_detect(Size, fixed('$')), 'char', 'num'), 
@@ -248,7 +248,7 @@ Micro_prepare_BRA_PNADC <- function(ref_area, source, time, wd){
 	ref_dataset_zip <- ref_files %>% filter(str_sub(value, -4, -1) %in% '.zip', str_sub(value,1,5) %in% 'PNADC') %>% t %>% as.character			
 	ref_dataset <- unzip(ref_dataset_zip, list = TRUE) %>% filter(str_sub(Name, -4, -1) %in% '.txt', str_sub(Name,1,5) %in% 'PNADC') %>% .$Name %>% t %>% as.character
 	
-	DATA <- readLines(unz(ref_dataset_zip,ref_dataset ))%>% as_data_frame
+	DATA <- readLines(unz(ref_dataset_zip,ref_dataset ))%>% enframe(name = NULL)
 	
 	for (j in 1:nrow(Layout)){
 	
@@ -318,11 +318,11 @@ Micro_prepare_ESP_EPA <- function(ref_area, source, time, wd){
 
 	
 	zipFile <- list.files() %>% 
-					as_data_frame %>% 
+					enframe(name = NULL) %>% 
 					filter(str_sub(tolower(value),-3,-1) %in% 'zip') %>% filter(substr(value,1,6) %in% 'datos_') %>% t %>% as.character
 	 unzip(zipFile )
 	xlsFile <- list.files() %>% 
-					as_data_frame %>% 
+					enframe(name = NULL) %>% 
 					filter(str_sub(tolower(value),-3,-1) %in% 'zip') %>% filter(substr(value,1,7) %in% 'disereg') %>% t %>% as.character
 	 unzip(xlsFile )
 
@@ -330,11 +330,11 @@ Micro_prepare_ESP_EPA <- function(ref_area, source, time, wd){
 	
 
 	FileOri <- list.files() %>% 
-					as_data_frame %>% 
+					enframe(name = NULL) %>% 
 					filter(!str_sub(tolower(value),-3,-1) %in% 'zip', !str_detect(value, 'Data|Technical|Original|Questionnaire|Techinical|Report|Internal|.pdf'))
 	test <- 'EPA'
 	file <- FileOri %>% filter(substr(value,1,3) %in% test) %>% t %>% as.character
-	X <- readLines(paste0( file)) %>% as_data_frame
+	X <- readLines(paste0( file)) %>% enframe(name = NULL)
 	filexl <- FileOri %>% filter(str_detect(value,'.xls')) %>% t %>% as.character
 	REF <- readxl:::read_excel(paste0( filexl), sheet = 3, skip = 5) %>% 
 				filter( !CAMPO %in% NA) %>% 
@@ -410,7 +410,7 @@ Micro_prepare_USA_CPS <- function(ref_area, source, time, wd){
 	
 	
 	
-	ref_files <- list.files() %>% as_data_frame 
+	ref_files <- list.files() %>% enframe(name = NULL) 
 
 	ref_data <- ref_files %>% filter(str_detect(value, '.zip')) %>% .$value
 	ref_dic <- ref_files %>% filter(str_detect(value, 'ILO_DIC_')) %>% .$value
@@ -419,7 +419,7 @@ Micro_prepare_USA_CPS <- function(ref_area, source, time, wd){
 	fileName <- unzip(ref_data, list = TRUE)$Name
 
 	
-	DATA <- readLines(unz(ref_data, fileName))%>% as_data_frame
+	DATA <- readLines(unz(ref_data, fileName))%>% enframe(name = NULL)
 	REF <-  read_csv( ref_dic  )
 	
 	

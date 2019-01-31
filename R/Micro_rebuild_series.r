@@ -44,7 +44,7 @@ Micro_rebuild_series <- function(
 					
 	path <- paste0(ilo:::path$micro, ref_area, '/', source, '/')
 	
-	if(master_id %in% 'all') master_id <- paste0(checkMaster$type %>% str_split('_', simplify = TRUE)%>% as_data_frame %>% .$V2, collapse = '/')
+	if(master_id %in% 'all') master_id <- paste0(checkMaster$type %>% str_split('_', simplify = TRUE)%>% as_tibble %>% .$V2, collapse = '/')
 
 	master_id <- stringr::str_split(master_id, pattern = '/') %>% unlist
 	
@@ -65,7 +65,7 @@ Micro_rebuild_series <- function(
 	
 		ref_folder <- test_master %>% select(value = time)  %>% mutate(myPath = paste0(path, value, '/'))%>% arrange(desc(value)) 
 
-		master_file <- 	list.files(paste0(path, master)) %>% as_data_frame %>% filter(stringr::str_sub(value,-6,-1) %in% c('CMD.do','K.xlsx','E.docx')) %>% distinct(value)
+		master_file <- 	list.files(paste0(path, master)) %>% as_tibble %>% filter(stringr::str_sub(value,-6,-1) %in% c('CMD.do','K.xlsx','E.docx')) %>% distinct(value)
 		
 		test <- master_file %>% filter(stringr:::str_detect(value, '_CMD.do')) %>% nrow
 		
@@ -104,7 +104,7 @@ Micro_rebuild_series <- function(
 
 		
 			a <- try(	list.files(paste0(ref_folder$myPath[fol])) %>% 
-							as_data_frame %>% 
+							as_tibble %>% 
 							filter(!value %in% 'ORI') %>% 
 							t %>% 
 							as.character %>% 
@@ -127,7 +127,7 @@ Micro_rebuild_series <- function(
 			doFile[doFile %>% str_detect('global time')] <- gsub(master, ref_folder$value[fol], doFile[doFile %>% str_detect('global time')])
 
 
-			check_imput_name <- list.files(paste0(path, ref_folder$value[fol],'/ORI' )) %>% as_data_frame %>% filter(str_detect(tolower(value), tolower(ori_pattern))) %>% filter(stringr::str_sub(tolower(value),-4,-1) %in% '.dta') %>% t %>% as.character 
+			check_imput_name <- list.files(paste0(path, ref_folder$value[fol],'/ORI' )) %>% as_tibble %>% filter(str_detect(tolower(value), tolower(ori_pattern))) %>% filter(stringr::str_sub(tolower(value),-4,-1) %in% '.dta') %>% t %>% as.character 
 		
 			if(length(check_imput_name) == 1){
 			
@@ -143,7 +143,7 @@ Micro_rebuild_series <- function(
 
 			file.remove(paste0(ref_folder$myPath[fol], gsub(master, ref_folder$value[fol], master_file$value[1])) %>% str_replace('.do', '.log'))
 	
-			test_files <- list.files(getwd()) %>% as_data_frame %>% filter(stringr::str_sub(value,-8,  -1) %in% c('FULL.dta','_ILO.dta'))
+			test_files <- list.files(getwd()) %>% as_tibble %>% filter(stringr::str_sub(value,-8,  -1) %in% c('FULL.dta','_ILO.dta'))
 			print(ref_folder$value[fol])
 			if(nrow(test_files)< 2) {print(paste0(ref_area, ' / ', source, ' / ', ref_folder$value[fol], ' : Error dta files not produced, plse check .do file')); return(NULL)}
 

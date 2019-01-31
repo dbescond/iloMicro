@@ -9,7 +9,7 @@
 #'
 #' ## End(**Not run**)
 #' @export
-Micro_file_ready <- function(DDI = FALSE){
+Micro_file_ready <- function(){
 
 	workflow <- Micro_get_workflow()
 	init <- getwd()
@@ -66,10 +66,10 @@ Micro_file_ready <- function(DDI = FALSE){
 			arrange(ref_area, source, desc(time)) %>% 
 			as.data.frame 
 
-	readworkflow <- read %>% select(-on_ilostat)
+
+	readworkflow <- read %>% select(-on_ilostat) %>% mutate( origine_website = ifelse(origine_repo %in% 'Contact NSO', NA, origine_website))
 
 
-	
 	
 	class(read$ref_area) <- "hyperlink"
 	class(read$path) <- "hyperlink"
@@ -90,74 +90,57 @@ Micro_file_ready <- function(DDI = FALSE){
 					
 	res <- bind_rows(res, new) %>% mutate(last_year = as.numeric(last_year))
 	class(res$ref_area) <- "hyperlink"
+		res <- res %>% select(-Published)
+	
+	cou <- Rilostat:::get_ilostat_toc(segment = 'ref_area') %>% filter(freq %in% 'A')  %>% select(ref_area, wb_income_group.label, ilo_region.label, ilo_subregion_broad.label,ilo_subregion_detailed.label )
 
+	overView <-  readworkflow %>% select(ref_area, time, source, processing_status, source_title) %>% 
+		filter(!processing_status %in% c('Not usable', 'Not needed')) %>%
+ 		mutate(processing_status = ifelse(processing_status %in% c('Published','Ready'), 'R', 'X'), source_type = str_sub(source_title,2,3), time = str_sub(time, 1,4)) %>% 
+		mutate(source_title = ifelse(source_type %in% 'DA' & str_sub(source,1,2) %in% 'WB', "[DA:XXX] - WBENTSUR - World Bank Entreprise Surves", source_title)) %>% 
+		mutate(source = ifelse(source_type %in% 'DA' & str_sub(source,1,2) %in% 'WB', "WBENTSUR", source)) %>% 
+		filter(as.numeric(time) > 1989) %>%
+		distinct() %>% 
+		group_by(ref_area, time,source_type) %>% 
+		summarise(source = first(source), processing_status = first(processing_status), source_title = first(source_title)) %>% 
+		ungroup 	%>% 
+		filter(!source_type %in% 'XX') %>% 
+		left_join(cou, by = 'ref_area') %>%
+		spread(time, processing_status)  %>%
+		ilo:::switch_ilo(ref_area, keep)
+	
+	overView <- overView %>% left_join(Ariane:::CODE_ORA$T_SRC_SOURCE %>% select(source_type = SRC_CODE, SRC_TEXT_EN), by = "source_type") %>% mutate(source_type = SRC_TEXT_EN) %>% select(-SRC_TEXT_EN)
+	
+	
 	wb <- createWorkbook()
 	options("openxlsx.borderStyle" = "thin")
 	options("openxlsx.borderColour" = "#4F81BD")
 	## Add worksheets
 	addWorksheet(wb, "workflow")
 	addWorksheet(wb, "summary")
+	addWorksheet(wb, "Annual_Overview")
 	addFilter(wb, 1, row = 1, cols = 1:ncol(readworkflow))
 	writeData(wb, "workflow", readworkflow)
+	
 	addFilter(wb, 2, row = 1, cols = 1:ncol(res))
 	writeData(wb, "summary", res)
+	
+	addFilter(wb, 3, row = 1, cols = 1:ncol(overView))
+	writeData(wb, "Annual_Overview", overView)
+	
 	saveWorkbook(wb, file = "MICRO_Workflow.xlsx", overwrite = TRUE)
-	rm( wb, res)	
+	rm( wb, res, overView)	
 	
-if(DDI){
-	
-	x <- create_ddi(as.tbl(read) %>% filter(processing_status %in% c("Published", "Ready"), on_ilostat %in% c('Yes','DDI_only', 'No')))
-	wb <- createWorkbook()
-	
-	x <- x %>% mutate(Publish_DDI = on_ilostat %>% plyr:::mapvalues(c('Yes','DDI_only', 'No'), c('Yes','Yes', 'No'), warn_missing = FALSE))
-	
-	addWorksheet(wb, "DDI")
-	
-
-	y <- 1 %>% as_data_frame %>% 
-			mutate(
-			ILO_meta = 'ILO_meta',
-			YY02 = '',
-			YY03 = '',
-			YY04 = '',
-			YY05 = '',
-			YY06 = '',
-			YY07 = '',
-			YY08 = '',
-			YY09 = '',
-			YY10 = '',
-			`Metadata Preparation` = 'Metadata Preparation', 
-			`Identification` = 'Identification', 
-			`XXX4` = '', 
-			`XXX5` = '', 
-			`XXX6` ='', 
-			`Overview` =  'Overview', 
-			`XXX9` =  '', 
-			Coverage = 'Coverage', 
-			`XXX10` = '', 
-			`Producers and Sponsors` = 'Producers and Sponsors', 
-			`Sampling` = 'Sampling',
-			`Data Collection` = 'Data Collection', 
-			`ilo notes` = 'ilo notes',
-			`XXX11` ='variable available', 
-			`XXX12` ='PUBLISH DDI '
-			) %>% select(-value)
-	
-	writeData(wb,startRow = 1, colNames = FALSE,  "DDI", y)
-	writeData(wb, startRow = 2, "DDI", x)
-
-	saveWorkbook(wb, file = "MICRO_WWDDI.xlsx", overwrite = TRUE)
-	rm(DDI, wb)	
-	
-	
-	}
-	## Save workbook to working directory
-rm(read)
+ 	rm(read)
 
 	invisible(gc(reset = TRUE))
+	
+
+	
 	setwd(init)
 
 	
+
 }
 
 #' @export
@@ -178,65 +161,151 @@ master <- Micro_get_workflow() %>%
 	
 }
 
+#' @export
+Micro_create_ddi <- function(x, ref_ddi){
+############### x <- Micro_get_workflow() %>% filter(processing_status %in% c('Published', 'Ready')) ; ref_ddi <- 1 : require(ilo) ; init_ilo()
 
-create_ddi <- function(x){
-############### sample count
+	init <- getwd()
+	setwd(ilo:::path$micro)
 
-
-	x <- x %>% rename(repo = source) %>% 
+	x <- as.tbl(x)  %>% 
+			mutate(	source_type_code = stringr::str_sub(source_title, 2,4), 
+					source_type_code = ifelse(stringr::str_sub(source_type_code,-1,-1) %in% ':', stringr::str_sub(source_type_code,1,2), NA) ) %>% 
+			left_join(select(ilo$code$cl_source, source_type_code = code, source_type = label_en), by = "source_type_code") %>%
+			select(ref_area, source, source_title, source_type, time, path, processing_status, processing_update = processing_date, origine_repo, origine_website, origine_date, comments, type, freq_code, on_ilostat) %>% 
+			mutate(type = ifelse(processing_status %in% c("Published", "Ready"), type, NA)) %>%
+			switch_ilo(ref_area, keep) %>% 
+			mutate(	origine_date = as.character(origine_date) %>% str_replace_all('-', fixed('/')), 
+					processing_update = as.character(processing_update) %>% str_replace_all('-', fixed('/')), 
+					comments = ifelse(processing_status %in% c('Published', 'Yes'), comments, NA)) %>% 
+			arrange(ref_area, source, desc(time)) %>% 
+			rename(repo = source) %>% 
 			separate(source_title, c('source', 'source.acronym', 'source.label'), sep = ' - ')	%>% 
 			mutate(source = str_trim(source) %>% str_sub(2,-2)) %>%  
 			left_join(filter(Ariane:::CODE_ORA$T_AGY_AGENCY, AGY_TYPE_CODE %in% 'NSO' ) %>% select(ref_area = AGY_COUNTRY_CODE, AGY_NAME1), by = "ref_area") %>% 
 			left_join(select(Ariane:::CODE_ORA$T_FRQ_FREQUENCY, freq_code = FRQ_CODE, label_freq = TEXT_EN), by = "freq_code") %>% 
 			mutate(
-			test_time_label  = str_sub(time, 5,-1) %>% 
-						plyr:::mapvalues(	from = c("" ,   "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "Q1",  "Q2",  "Q3",  "Q4"), 
-											to   = c(NA ,   "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "First quarter",  "Second quarter",  "Third quarter",  "Fourth quarter")),
-			test_time = ifelse(str_sub(comments,1,2) %in%c('19', '20'), comments, str_sub(time,1,4)),
+					test_time_label  = str_sub(time, 5,-1) %>% 
+												plyr:::mapvalues(	from = c("" ,   "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10", "M11", "M12", "Q1",  "Q2",  "Q3",  "Q4"), 
+																	to   = c(NA ,   "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December", "First quarter",  "Second quarter",  "Third quarter",  "Fourth quarter")),
+					test_time = ifelse(str_sub(comments,1,2) %in%c('19', '20'), comments, str_sub(time,1,4)),
 			 
-			`Metadata Producter` = 'Department of Statistics - ILO - International Labour Organisation - Producer of DDI', 
+					`Metadata Producter` = 'Department of Statistics - ILO - International Labour Organisation - Producer of DDI', 
 			#`Date of Production` = str_sub(Sys.time(), 1,10), 
 			#`DDI Document ID Number` = as.character(NA),
-			`Title` = paste0(source.label, ' ', test_time), 
-			`Subtitle` = ifelse(str_sub(time,5,5) %in% c('Q', 'M'), test_time_label, NA),
-			`Abbreviation` = paste0(source.acronym, ' ', test_time),
-			`Study Type` = source_type, 
+					`Title` = paste0(source.label, ' ', test_time), 
+					`Subtitle` = ifelse(str_sub(time,5,5) %in% c('Q', 'M'), test_time_label, NA),
+					`Abbreviation` = paste0(source.acronym, ' ', test_time),
+					`Study Type` = source_type, 
 			#`ID Number` = as.character(NA),
 			#`Abstract` =  as.character(NA), 
-			`Kind of Data` =  ifelse(str_sub(source, 1,1) %in% 'A', 'Census', NA), 
-			`Kind of Data` =  ifelse(str_sub(source, 1,1) %in% 'B', 'survey',`Kind of Data`), 
-			`Unit of Analysis` =  ifelse(str_sub(source, 1,1) %in% c('A', 'B'), 'households/individuals', NA), 
-			Country = ref_area.label,
-			`Geographic Coverage` = ifelse(str_detect(tolower(source.label), 'urban'), 'Urban area', 'National coverage'),
-			`Primary Investigator` = AGY_NAME1, 
-			`Sampling Procedure` = as.character(NA),
-			`Data reference period` = label_freq, 
-			`ilo notes` =   as.character(NA)
-			
+					`Kind of Data` =  ifelse(str_sub(source, 1,1) %in% 'A', 'Census', NA), 
+					`Kind of Data` =  ifelse(str_sub(source, 1,1) %in% 'B', 'survey',`Kind of Data`), 
+					`Unit of Analysis` =  ifelse(str_sub(source, 1,1) %in% c('A', 'B'), 'households/individuals', NA), 
+					Country = ref_area.label,
+					`Geographic Coverage` = ifelse(str_detect(tolower(source.label), 'urban'), 'Urban area', 'National coverage'),
+					`Primary Investigator` = AGY_NAME1, 
+					`Sampling Procedure` = as.character(NA),
+					`Data reference period` = label_freq, 
+					`ilo notes` =   as.character(NA)
 			)				
 						
-
-						
-
-test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>% 
+	test <- x %>% filter(processing_status %in% c('Ready', 'Published')) %>% 
 				select(path) %>% 
 				mutate(file = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO.dta'), 
 					   DOCfile = paste0(path, '/', path %>% str_replace_all(fixed('/'), '_'), '_ILO_README.docx')) %>% 
 				mutate(n_records = 0, 
 						important_ILO_notes = NA, 
-						var_available = NA)
-tocheck <- NULL				
+						var_available = NA) %>% 
+				separate(file, c('ref_area','source','time','dta'), sep = '/', remove = FALSE) %>% 
+				mutate(dta = str_sub(dta, 1, -9))
+	
+	
+	
+	test_origin <- read_csv(paste0(ilo:::path$micro, "_Database/activated.csv")) %>% slice(1) %>% .$path
+
+	
+	origine_database <- paste0(ilo:::path$micro,"_Database/",test_origin )
+	
+	rm(test_origin)
+	
+	if(!dir.exists(origine_database)){
+		 dir.create(origine_database, showWarnings = FALSE, recursive = FALSE, mode = "0777")
+	}
+	
+	origine_database <- paste0(origine_database, '/')
+	
+	# if(!dir.exists(paste0(origine_database, 'csv'))){
+		 # dir.create(paste0(origine_database, 'csv'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 # dir.create(paste0(origine_database, 'csv/A'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 # dir.create(paste0(origine_database, 'csv/Q'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 # dir.create(paste0(origine_database, 'csv/M'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 
+	# }
+	
+	if(!dir.exists(paste0(origine_database, 'dta'))){
+		 dir.create(paste0(origine_database, 'dta'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'dta/A'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'dta/Q'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'dta/M'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+	}
+	
+	if(!dir.exists(paste0(origine_database, 'rds'))){
+		 dir.create(paste0(origine_database, 'rds'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'rds/A'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'rds/Q'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+		 dir.create(paste0(origine_database, 'rds/M'), showWarnings = FALSE, recursive = FALSE, mode = "0777")
+	}	
+
+	tocheck_ReadMe <- NULL		
+	tocheck_Dta_Available <- NULL		
+	
 	for (i in 1:nrow(test)){
 		test_dta <- NULL
-		try(test_dta <- haven::read_dta(test$file[i]) %>% select(-contains('ilo_key'), -contains('ilo_time')) )
+		
+		ref_time <- str_sub(test$time[i], 5,5)
+		if(ref_time %in% '') ref_time <- 'A'
+		
+		invisible(gc(reset = TRUE))
+		invisible(gc(reset = TRUE))
+		
+		try(test_dta <- 
+				file.copy(	from = 	test$file[i] , 
+							to = 	paste0(origine_database, 'dta/', ref_time, '/', test$dta[i], '.dta'), 
+							recursive = FALSE, overwrite = TRUE, 
+							copy.mode = TRUE, copy.date = TRUE), silent = TRUE) 
+		
+		if(!test_dta) tocheck_Dta_Available <- c(tocheck_Dta_Available,paste0(i , ' --- ', test$file[i], ' ---   ERROR dta_not available') )
+		test_dta <- NULL
+		
+		invisible(gc(reset = TRUE))
+			
+		try(test_dta <- haven::read_dta(test$file[i]) %>% 
+						select(-contains('ilo_key'), -contains('ilo_time'))   %>% 
+						mutate_if(is.labelled, funs(unclass))  , silent = TRUE) 
+			
+		
 		if(!is.null(test_dta)){
 			test$var_available[i] <- paste0(colnames(test_dta), collapse = '/') 
 			test$n_records[i] <-  nrow(test_dta)
+
+			test_dta <- test_dta  %>% 
+						group_by_(.dots = colnames(test_dta)[!colnames(test_dta) %in% 'ilo_wgt']) %>% 
+						summarise(sample_count = n(), ilo_wgt = sum(ilo_wgt)) %>% 
+						ungroup
+		
+			invisible(gc(reset = TRUE))
+			invisible(gc(reset = TRUE))
+		
+			# test_dta %>% haven:::write_dta(paste0(origine_database, 'dta/', ref_time, '/', test$dta[i], '.dta'))
+			
+			test_dta %>% saveRDS(., file = paste0(origine_database, 'rds/', ref_time, '/', test$dta[i], '.rds'))
+	
 			rm(test_dta)
 		
 		}
 		
-		invisible(gc(reset = TRUE))
+
 		invisible(gc(reset = TRUE))
 		
 		
@@ -254,54 +323,52 @@ tocheck <- NULL
 			  }	
 		  }
 		  
-		  test$important_ILO_notes[i] <-  check %>% as_data_frame %>% slice(-1) %>% nest
+		  test$important_ILO_notes[i] <-  check %>% enframe(name = NULL) %>% slice(-1) %>% nest
 		
 		  print(paste0(i, ' / ', test$file[i]))
 		
 		} else {
-		tocheck <- c(tocheck,paste0(i , ' --- ', test$file[i], ' ---   ERROR README.docx') )
+		tocheck_ReadMe <- c(tocheck_ReadMe,paste0(i , ' --- ', test$file[i], ' ---   ERROR README.docx') )
 		print(paste0(i , ' / ', test$file[i], ' ---   ERROR README.docx'))
 		
 		}
 		
 	}
 	
-	if(length(tocheck) > 0 ) {tocheck %>% as_data_frame %>% separate(value, c('id','path','error'), sep = fixed(' --- ')) %>% write_csv(paste0(ilo:::path$micro, '/_Admin/CMD/log_readMe_error.csv'), na = '')}
+	
+	try(file.remove(paste0(ilo:::path$micro, '/_Admin/CMD/_ckeck/log_readMe_error_',ref_ddi,'.csv')), silent = TRUE)
+	if(length(tocheck_ReadMe) > 0 ) {tocheck_ReadMe %>% enframe(name = NULL) %>% separate(value, c('id','path','error'), sep = fixed(' --- ')) %>% write_csv(paste0(ilo:::path$micro, '/_Admin/CMD/_ckeck/log_readMe_error_',ref_ddi,'.csv'), na = '')}
+	rm(tocheck_ReadMe)
+	
+	try(file.remove(paste0(ilo:::path$micro, '/_Admin/CMD/_ckeck/log_dta_available_error_',ref_ddi,'.csv')), silent = TRUE)
+	if(length(tocheck_Dta_Available) > 0 ) {tocheck_Dta_Available %>% enframe(name = NULL) %>% separate(value, c('id','path','error'), sep = fixed(' --- ')) %>% write_csv(paste0(ilo:::path$micro, '/_Admin/CMD/_ckeck/log_dta_available',ref_ddi,'.csv'), na = '')}
+	rm(tocheck_Dta_Available)
 	
 	
 	
-	x <- x %>% select(-`ilo notes`) %>% left_join(select(test, path, n_records,important_ILO_notes, var_available), by = "path") %>% 
+	############ module create annual from Quarterly
+	
+	
+	
+	
+	
+	x %>% select(-`ilo notes`) %>% left_join(select(test, path, n_records,important_ILO_notes, var_available), by = "path") %>% 
 				mutate(
 					`Sampling Procedure` = paste0('n records = ', n_records )) %>% 
 				select(-n_records) %>% 
 				mutate(important_ILO_notes = ifelse(important_ILO_notes %in% NA, '', important_ILO_notes)) %>%
 				rename(`ilo notes` = important_ILO_notes) %>%
-				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`, var_available, on_ilostat)	
+				select(path, ref_area, source, time, processing_status, processing_update,origine_date, Master = type, origine_date,origine_repo,  origine_website, `Metadata Producter`:`ilo notes`, var_available, on_ilostat)  %>% 
+				mutate( origine_website = ifelse(origine_repo %in% 'Contact NSO', NA, origine_website)) %>% 
+				mutate(Publish_DDI = on_ilostat %>% plyr:::mapvalues(c('Yes','DDI_only', 'No'), c('Yes','Yes', 'No'), warn_missing = FALSE)) %>% 
+				saveRDS(., file = paste0(origine_database, "/tmp_DDI_",ref_ddi , '.rds'))
+	
+	rm(x)
+	
+		invisible(gc(reset = TRUE))
+		invisible(gc(reset = TRUE))
+		setwd(init)
 
-	invisible(gc(reset = TRUE))
-	x
-	
-	
-	
-	
-	
-	
-	# data_frame(text = readtext(path)$text %>% str_split('\n')  %>% unlist ) %>% 
-			# mutate(
-					# test = ifelse(str_detect(tolower(text), 'important notes '), 'TITLE', as.character(NA)), 
-					# test = ifelse(str_detect(tolower(text), 'ilo_country|ilo_source|ilo_wgt|ilo_geo|ilo_sex|ilo_age_5yrbands|ilo_age_10yrbands|ilo_age_aggregate|ilo_age_ythadult|ilo_edu_isced11|ilo_edu_isced97|ilo_edu_aggregate|ilo_edu_attendance|ilo_dsb_details|ilo_dsb_aggregate|ilo_wap|ilo_lfs|ilo_mjh|ilo_job1_ste_icse93|ilo_job1_ste_aggregate|ilo_job1_eco_isic4_2digits|ilo_job1_eco_isic4|ilo_job1_eco_isic3_2digits|ilo_job1_eco_isic3|ilo_job1_eco_aggregate|ilo_job1_eco_sector|ilo_job1_eco_agnag|ilo_job1_ocu_isco08_2digits|ilo_job1_ocu_isco08|ilo_job1_ocu_isco88_2digits|ilo_job1_ocu_isco88|ilo_job1_ocu_aggregate|ilo_job1_ocu_skill|ilo_job1_ins_sector|ilo_job1_job_time|ilo_job1_job_contract|ilo_job1_ife_prod|ilo_job1_ife_nature|ilo_job1_how_actual|ilo_job1_how_usual|ilo_job1_how_actual_bands|ilo_job1_lri_ees|ilo_job1_lri_slf|ilo_joball_tru|ilo_joball_oi_case|ilo_joball_oi_day|ilo_joball_how_actual|ilo_joball_how_usual|ilo_joball_how_actual_bands|ilo_cat_une|ilo_dur_details|ilo_dur_aggregate|ilo_preveco_isic4|ilo_preveco_isic3|ilo_preveco_aggregate|ilo_prevocu_isco08|ilo_prevocu_isco88|ilo_prevocu_aggregate|ilo_prevocu_skill|ilo_gsp_uneschemes|ilo_olf_dlma|ilo_olf_reason|ilo_dis|ilo_neet|ilo_age|ilo_edu|ilo_dsb|ilo_wap|ilo_lfs|ilo_mjh|ilo_ste_icse93|ilo_ste_aggregate|ilo_eco_isic4|ilo_eco_isic3|ilo_eco_aggregate|ilo_eco_sector|ilo_eco_agnag|ilo_ocu_isco08|ilo_ocu_isco88|ilo_ocu_aggregate|ilo_ocu_skill|ilo_ins_sector|ilo_job_time|ilo_job_contract|ilo_ife_prod|ilo_ife_nature|ilo_how_actual|ilo_how_usual|ilo_lri_ees|ilo_lri_slf|ilo_tru|ilo_oi_case|ilo_oi_day|ilo_cat_une|ilo_dur_details|ilo_dur_aggregate|ilo_preveco|ilo_prevocu|ilo_gsp|ilo_olf|ilo_dis|ilo_neet'), 'SUBTITLE', test),
-					# test = ifelse(test %in% NA, 'TEXT', test)
-				# )
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
 }
 
 
@@ -317,7 +384,7 @@ require(iloMicro)
 	setwd(ilo:::path$micro)
 
 
-	REF_DIR <- list.files() %>% as_data_frame() %>% rename(ref_area = value)%>% filter(nchar(ref_area) %in% 3)
+	REF_DIR <- list.files() %>% enframe(name = NULL) %>% rename(ref_area = value)%>% filter(nchar(ref_area) %in% 3)
 	
 	############### loop on ref_area
 	workflow <- Micro_get_workflow() %>% filter(!source %in% c('GALLUP'))
@@ -348,7 +415,7 @@ require(iloMicro)
 			
 			# clean up files on the roots
 			
-			ROOTS <- list.files() %>% as_data_frame() %>% filter(!value %in% c('ORI'))
+			ROOTS <- list.files() %>% enframe(name = NULL) %>% filter(!value %in% c('ORI'))
 			
 			delete <- NULL
 			delete <- ROOTS %>% filter(str_detect(value, '_ILO_ilostat.csv')) %>% .$value
@@ -357,7 +424,7 @@ require(iloMicro)
 	
 			#identify ORI files and folder
 			
-			ORI <- list.files('./ORI') %>% as_data_frame() %>% filter(!value %in% c('Questionnaires','Reports', 'Technical', 'Internal')) %>% 
+			ORI <- list.files('./ORI') %>% enframe(name = NULL) %>% filter(!value %in% c('Questionnaires','Reports', 'Technical', 'Internal')) %>% 
 					mutate(size = as.character(NA), isdir = as.character(NA))
 			if(nrow(ORI) > 0){			
 			for (j in 1:nrow(ORI)){
@@ -373,7 +440,7 @@ require(iloMicro)
 			
 				for (j in 1:length(test_dir)){
 				
-						SUB_DIR <- list.files(paste0('./ORI/',test_dir[j]) ) %>% as_data_frame() %>% # filter(!value %in% c('Original','Questionnaires','Reports', 'Technical', 'Internal')) %>% 
+						SUB_DIR <- list.files(paste0('./ORI/',test_dir[j]) ) %>% enframe(name = NULL) %>% # filter(!value %in% c('Original','Questionnaires','Reports', 'Technical', 'Internal')) %>% 
 								mutate(size = as.character(NA), isdir = as.character(NA))
 						if(nrow(SUB_DIR)>0){
 						for (k in 1:nrow(SUB_DIR)){

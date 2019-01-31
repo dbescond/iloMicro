@@ -4,7 +4,7 @@
 \alias{Micro_file_ready}
 \title{helper to prepare summary file on root repo}
 \usage{
-Micro_file_ready(DDI = FALSE)
+Micro_file_ready()
 }
 \description{
 helper to prepare summary file on root repo

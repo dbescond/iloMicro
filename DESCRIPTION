@@ -1,16 +1,17 @@
 Package: iloMicro
 Type: Package
 Title: Tools kit for ilo microdata processing of labour force survey
-Version: 2.1.0
+Version: 2.3
 Date: 2017-07-09
 Author: person("Bescond", "David", , "bescond@ilo.org", role = c("aut", "cre"))
+Maintainer: David Bescond <bescond@ilo.org>
 BugReports: https://github.com/dbescond/iloMicro/issues
 Description: The ILO / Statistics Department is developing a comprehensive
     framework with operational definition. The objective of this document is to
     define and explain all the key variables we are trying to harmonize from all the
     microdata we are receiving or collecting at the ILO Department of Statistics.
-Depends:
-    R (>= 3.3.3)
+Depends: 
+    R (>= 3.6.1)
 License: MIT + file LICENSE
 LazyData: true
 URL: https://github.com/dbescond/iloMicro

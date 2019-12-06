@@ -31,11 +31,11 @@
 #' ## Not run:
 #'
 #' # process the all time series validate in the workflowflow
-#'  Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE, time = '2016Q1')
+#'  Micro_process(ref_area = 'ZAF', source = 'QLFS', saveCSV = TRUE, validate = TRUE, time = '2016Q1', print_ind = TRUE)
 #'
 #'
 #' # run the entire process for one country only (go for publication on ilostat)
-#' Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
+#' Micro_process(validate = TRUE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
 #'
 #' ## End(**Not run**)
 #' @export
@@ -47,13 +47,13 @@ Micro_process <- function(		# path = NULL,
 								time = NULL, 
 								indicator = NULL, 
 								ktest = c(max = 15, min = 5, threshold = 0.334), 
-								saveCSV = TRUE, 
+								saveCSV = FALSE, 
 								ilo_time = NULL, 
 								delete = FALSE, 
-								collection = 'YI', 
+								collection = 'STI', 
 								keep_count = TRUE, 
 								query = NULL, 
-								print_ind = TRUE, 
+								print_ind = FALSE, 
 								validate = FALSE, 
 								consolidate = '1', 
 								skip = NULL, 
@@ -64,9 +64,9 @@ Micro_process <- function(		# path = NULL,
 								QUERY = NULL){
 
 
-								# ref_area =  'CAN'
+								# ref_area =  'ALB'
 								# source = 'LFS'
-								# time = '2018M05'
+								# time = '2013'
 								# indicator = NULL
 								# ktest = c(max = 15, min = 5, threshold = 0.334)
 								# saveCSV = FALSE
@@ -84,13 +84,13 @@ Micro_process <- function(		# path = NULL,
 								# output = 'ilostat'
 								# test = NULL
 								# PUB = TRUE
-								# QUERY = 'MICRO_UNWOMEN_MTS'
+								# QUERY = 'MICRO_ILO_STAT_SPOT_EDU'
 
 
 
 
 	ilo:::init_ilo(-cl)	
-require(stringr)
+	require(stringr)
 								
 if(str_detect(consolidate, '1')){	
 							
@@ -186,11 +186,24 @@ if(str_detect(consolidate, '1')){
 
 		if(!saveCSV & !is.null(X)){
 		
-			# add break and frequency
-			if(!workflow$note_value[i] %in% NA){ 
-					X <- X %>% mutate(obs_status = workflow$note_value[i])
+			# add break at source level
+			if(!workflow$source_flag[i] %in% NA){ 
+					X <- X %>% mutate(obs_status = workflow$source_flag[i])
 			}
 			
+			# add break at indicator level
+			if(!workflow$indicator_flag[i] %in% NA){ 
+			
+					check <- workflow$indicator_flag[i] %>% str_split(';', simplify = TRUE) %>% str_trim() %>% c
+					
+					ref_indicator <- ilo_tpl$Mapping_indicator %>% filter(str_detect(SELECT, paste0(check, collapse = '|'))) %>% select(indicator)
+					
+					if(nrow(ref_indicator) > 0) {
+						X <- X %>% mutate(obs_status = ifelse(indicator %in% ref_indicator$indicator, 'B', obs_status))
+					}
+			}
+			
+			# add frequency at source level
 			if(!workflow$freq_code[i] %in% NA){ 
 					X <- X %>% mutate(freq_code = workflow$freq_code[i])
 			}
@@ -207,7 +220,7 @@ if(str_detect(consolidate, '1')){
 			
 			########## save	
 			
-			fwrite(X, file  = paste0(pathOutput, workflow$ref_area[i], '/', workflow$source[i], '/', workflow$ref_area[i], '_', workflow$source[i], '_', workflow$time[i], '.csv'), na = '')
+			data.table:::fwrite(X, file  = paste0(pathOutput, workflow$ref_area[i], '/', workflow$source[i], '/', workflow$ref_area[i], '_', workflow$source[i], '_', workflow$time[i], '.csv'), na = '')
 		}
 		
 		if(nrow(workflow) > 1) rm(X)
@@ -229,14 +242,14 @@ if(str_detect(consolidate, '2')){
 
 	print('Process quarterly average for monthly dataset !!!!')
 
-	iloMicro:::Micro_process_quarterly_from_monthly(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY)
+	iloMicro:::Micro_process_quarterly_from_monthly(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY, timefrom = timefrom, timeto = timeto)
 
 
 	print('Process annual average for quarterly dataset !!!!')
 
-	Micro_process_annual_from_quarterly(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY)
+	Micro_process_annual_from_quarterly(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY, timefrom = timefrom, timeto = timeto)
 
-	Micro_process_annual_from_quarterlyCalculated(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY)
+	Micro_process_annual_from_quarterlyCalculated(ref_area = ref_area, source = source, validate = validate, ktest = ktest, skip = skip, PUB = PUB, QUERY = QUERY, timefrom = timefrom, timeto = timeto)
 
 	
 	print(paste0('Step 2 OK !!!!  ', Sys.time() ))
@@ -271,24 +284,24 @@ Micro_process_volume <- function(	df,
 	rm(indicator)
 
 	# get SELECT store as character vector 
-	SELECT <- c(ref_indicator$SELECT   %>% as.character %>% stringr::str_split(', ') %>% unlist %>% .[!. %in% ''], 'sample_count')
+	SELECT <- c(ref_indicator$SELECT   %>% as.character %>% stringr::str_split(',') %>% unlist %>% .[!. %in% ''], 'ilo_sample_count') %>% stringr:::str_trim() 
 
 	# get FILTER store as a string read as is
-	FILTER 		<- ref_indicator$FILTER 	  %>% as.character %>% stringr::str_replace_all(', ', ' & ') %>% gsub('==', '%in%', .)
+	FILTER 		<- ref_indicator$FILTER 	  %>% as.character %>% stringr::str_replace_all(';', ' & ') %>% stringr::str_replace_all('  ', ' ') %>% gsub('==', '%in%', .)
 	
 	# get GROUP_BY from ref_indicator store as character vector
-	GROUP_BY 	<- ref_indicator$GROUP_BY  %>% as.character %>% stringr::str_split(', ') %>% unlist %>% .[!. %in% '']
+	GROUP_BY 	<- ref_indicator$GROUP_BY  %>% as.character %>% stringr::str_split(',')  %>% unlist %>% .[!. %in% ''] %>% stringr:::str_trim()
 	
 	# get SUMMARISE from ref_indicator store as a string read as is
-	SUMMARISE 	<- ref_indicator$SUMMARISE %>% as.character 
+	SUMMARISE 	<- ref_indicator$SUMMARISE %>% as.character %>% stringr:::str_trim()
 
 	# reduce and filter df base on ref_indicator instruction
 
 	df <- df %>% 	
-		select_(.dots = SELECT) %>% 
+		select(!! SELECT) %>% 
 		mutate(ilo_time = ilo_time  %>% as.character) %>%
-		mutate_if(is.factor, funs(unclass)) %>% 
-		filter_(FILTER)
+		haven:::zap_labels() %>% 
+		filter(eval(parse(text = FILTER)))
 
 	if(nrow(df) == 0) {
 		print(paste0('WARNINGS !!! To build indicator ', ref_indicator$ID, '!!! one major component of the filter is probably missing, plse check the dta mapping !!!!'))
@@ -332,9 +345,9 @@ Micro_process_volume <- function(	df,
 	# 	GROUP_BY ilo_time and all possibilities of classifs (sex, classif1, classif2) (1,2,3 or 1,2 or 2,3, or 1 or na) 
 	#	ie. ilo_sex, ilo_age, ilo_edu OR ilo_sex, ilo_age OR ilo_eco, ilo_ocu OR ilo_sex OR na 
 	res <- df %>% 
-			group_by_(.dots = GROUP_BY) %>% 
+			group_by_at(.vars = GROUP_BY) %>% 
 			summarise_(	obs_value = SUMMARISE, 
-						sample_count = 'sum(sample_count)', 
+						ilo_sample_count = 'sum(ilo_sample_count)', 
 						ilo_wgt = 'sum(ilo_wgt)') %>% 
 			ungroup 
 
@@ -344,9 +357,9 @@ Micro_process_volume <- function(	df,
 	res <- res %>% 
 		bind_rows(
 		df %>% 
-			group_by_(.dots = GROUP_BY[1]) %>% 
+			group_by_at(.vars = GROUP_BY[1]) %>% 
 			summarise_(	obs_value = SUMMARISE, 
-						sample_count = 'sum(sample_count)', 
+						ilo_sample_count = 'sum(ilo_sample_count)', 
 						ilo_wgt = 'sum(ilo_wgt)') %>% 
 			ungroup  %>% 
 			# set to 0 the key variables delete (0 label = 'Total')
@@ -364,9 +377,9 @@ Micro_process_volume <- function(	df,
 			res <- res %>% 
 				bind_rows(
 					df %>% 
-						group_by_(.dots = GROUP_BY[-j]) %>% 
+						group_by_at(.vars = GROUP_BY[-j]) %>% 
 						summarise_(	obs_value = SUMMARISE, 
-									sample_count = 'sum(sample_count)', 
+									ilo_sample_count = 'sum(ilo_sample_count)', 
 							ilo_wgt = 'sum(ilo_wgt)') %>% 
 						ungroup %>%
 						# set to 0 the key variable delete (0 label = 'Total')
@@ -384,9 +397,9 @@ Micro_process_volume <- function(	df,
 			res <- res %>% 
 				bind_rows( 
 					df %>% 
-						group_by_(.dots = GROUP_BY[c(1,j)]) %>% 
+						group_by_at(.vars = GROUP_BY[c(1,j)]) %>% 
 						summarise_(	obs_value = SUMMARISE, 
-									sample_count = 'sum(sample_count)', 
+									ilo_sample_count = 'sum(ilo_sample_count)', 
 							ilo_wgt = 'sum(ilo_wgt)') %>% 
 						ungroup  %>%
 						# set to 0 the key variables delete (0 label = 'Total')
@@ -413,8 +426,8 @@ Micro_process_volume <- function(	df,
 				arrange_(.dots = GROUP_BY) %>% 
 				mutate(indicator = ref_indicator$indicator_label) %>% 
 				rename(time = ilo_time) %>% 
-				select(indicator, contains('ilo_'),time,obs_value, sample_count) %>% 
-				mutate_if(is.factor, funs(as.character))
+				select(indicator, contains('ilo_'),time,obs_value, ilo_sample_count) %>% 
+				mutate_if(is.factor, .funs = as.character)
 
 
 	# STEP 6 ############################
@@ -466,7 +479,7 @@ Micro_process_volume <- function(	df,
 			
 		}
 
-	res <- res %>% select(indicator, sex, classif1, classif2, time, obs_value, sample_count, ilo_wgt) 
+	res <- res %>% select(indicator, sex, classif1, classif2, time, obs_value, ilo_sample_count, ilo_wgt) 
 
 	
 }
@@ -510,7 +523,7 @@ Micro_process_volume <- function(	df,
 			
 				res <- res %>% group_by(indicator, sex, classif1, classif2, time) %>% 
 						summarise(	obs_value = sum(obs_value, na.rm = TRUE), 
-									sample_count = sum(sample_count, na.rm = TRUE), 
+									ilo_sample_count = sum(ilo_sample_count, na.rm = TRUE), 
 									ilo_wgt = sum(ilo_wgt, na.rm = TRUE)) %>% 
 						ungroup
 			
@@ -538,7 +551,7 @@ Micro_process_volume <- function(	df,
 			
 				res <- res %>% group_by(indicator, sex, classif1, classif2, time) %>% 
 						summarise(	obs_value = sum(obs_value, na.rm = TRUE), 
-									sample_count = sum(sample_count, na.rm = TRUE), 
+									ilo_sample_count = sum(ilo_sample_count, na.rm = TRUE), 
 									ilo_wgt = sum(ilo_wgt, na.rm = TRUE)) %>% 
 						ungroup
 			
@@ -569,18 +582,18 @@ Micro_process_volume <- function(	df,
 	res <- res %>% 	mutate(note_classif =  as.character(NA) , 
 						note_indicator = note_ind) %>% 
 				mutate( obs_status = as.character(NA), 
-						sample_count = as.numeric(sample_count),
-						obs_status = ifelse(sample_count < ktest[1],'U',  obs_status), 
-						obs_status = ifelse(sample_count < ktest[2],'S',  obs_status), 
+						ilo_sample_count = as.numeric(ilo_sample_count),
+						obs_status = ifelse(ilo_sample_count < ktest[1],'U',  obs_status), 
+						obs_status = ifelse(ilo_sample_count < ktest[2],'S',  obs_status), 
 						table_test = as.character(NA)) 
 			del <- res %>% count(obs_status) %>% filter(obs_status %in% 'S') %>% .$n / nrow(res)
 			res <- res %>% mutate(table_test = round(ifelse(length(del)>0,del, 0), 2)) %>%
-					mutate_if(Negate(is.numeric) , funs(as.character))
+					mutate_if(Negate(is.numeric) , .funs = as.character)
 			rm(del)
 	
 	# add currency
 	if(stringr::str_sub(ref_indicator$indicator, 1, 3)%in% 'EAR'){
-		cou_ref <- ilo_tpl$Note %>% filter(var_name %in% 'ilo_country') %>% select(ilostat_code) %>% t %>% as.character
+		cou_ref <- ilo_tpl$Note %>% filter(var_name %in% c('ilo_country', 'ilo_ref_area')) %>% select(ilostat_code) %>% t %>% as.character
 		cur_ref <- ilo$code$cl_note_currency %>% filter(code_Geo %in% cou_ref) %>% slice(1) %>% select(code) %>% t %>% as.character
 		res <- res %>% mutate( note_indicator = paste0(note_indicator, '_', cur_ref))
 		rm(cur_ref, cou_ref)
@@ -621,7 +634,7 @@ Micro_process_volume <- function(	df,
 	# from classif2
 	note_clas2 <- ilo_tpl$Note %>% 
 					filter(ilostat_code %in% unique(res$classif2), !ilostat_code %in% NA, !ilostat_note_code %in% NA) %>% 
-					mutate_all(funs(as.character)) %>% 
+					mutate_all(.funs = as.character) %>% 
 					select(classif2 = ilostat_code, note_clas2 = ilostat_note_code) %>% distinct(classif2, note_clas2)
 	if(nrow(note_clas2) >0){
 		res <- res %>% 
@@ -633,8 +646,8 @@ Micro_process_volume <- function(	df,
 	rm(note_clas2)	
 
 	# order variable and return res			
-	res %>% select(indicator:obs_value, obs_status, contains('note_'), sample_count, table_test, ilo_wgt) %>%
-				mutate_all(funs(as.character)) %>% mutate_at(vars(obs_value,sample_count, table_test, ilo_wgt), funs(as.numeric)) %>% as.tbl
+	res %>% select(indicator:obs_value, obs_status, contains('note_'), ilo_sample_count, table_test, ilo_wgt) %>%
+				mutate_all(.funs = as.character) %>% mutate_at(vars(obs_value,ilo_sample_count, table_test, ilo_wgt), .funs = as.numeric) %>% as.tbl
 
 
 }
@@ -657,11 +670,6 @@ Micro_process_ratio <- function( 	df,
 						select(indicator:indicator_label) %>% 
 						filter(	stringr::str_sub(indicator,-2,-1) %in% 'NB') %>% 
 						filter_(paste0("indicator %in% c('",paste0(GROUP_BY, collapse = "', '"),"')")) %>% 
-						# rename(sex = sex_var, classif1 = classif1_var, classif2 = classif2_var) %>% 
-						# filter_(FILTER)
-	# ref_component <- eval(parse(text = paste0('ref_component %>% mutate(',MUTATE,')')))
-	
-	# ref_component <- ref_component %>% rename(sex_var = sex, classif1_var = classif1, classif2_var = classif2)  %>%
 						filter(	sex_var %in% ref_indicator$sex_var, 
 								classif1_var %in% ref_indicator$classif1_var, 
 								classif2_var %in% ref_indicator$classif2_var )
@@ -673,7 +681,7 @@ Micro_process_ratio <- function( 	df,
 	for (i in 1:nrow(ref_component)){
 
 		note_sou <- ilo_tpl$Note %>% 
-				filter(var_name %in% c('ilo_country', 'ilo_source') & !ilostat_note_code %in% NA) %>% 
+				filter(var_name %in% c('ilo_country', 'ilo_ref_area', 'ilo_source') & !ilostat_note_code %in% NA) %>% 
 				summarise(test = paste0(ilostat_note_code, collapse = '_')) %>% 
 				t %>% as.character 
 
@@ -701,14 +709,14 @@ Micro_process_ratio <- function( 	df,
 
 	res %>% mutate(indicator = as.character(ref_indicator$indicator)) %>% 
 			mutate_(obs_value = SUMMARISE) %>% 
-			select(indicator, sex, classif1, classif2, time, obs_value, obs_status, dplyr::contains('note_'), sample_count, table_test, ilo_wgt)
+			select(indicator, sex, classif1, classif2, time, obs_value, obs_status, dplyr::contains('note_'), ilo_sample_count, table_test, ilo_wgt)
 
 }
 
 
 Micro_process_test <- function(df , view = TRUE,QUERY = NULL){
 
-	df <- df %>% mutate_if(is.labelled, funs(zap_labels)) 
+	df <- df %>% haven:::zap_labels()
 
 	.col = df %>% select(contains('ilo_')) %>% colnames
 
@@ -770,8 +778,8 @@ Micro_process_time <- function(		path = NULL,
 
 
 	if (is.null(path)){
-	if(is.null(ref_area) | is.null(source) | is.null(time) ){return('error plse specify path or ref_area AND source AND time')}
-	if(!(is.null(ref_area) | is.null(source) | is.null(time)) ){ path <- paste0(ilo:::path$micro, ref_area, '/', source, '/', time, '/', ref_area, '_', source, '_', time, '_ILO.dta')}
+		if(is.null(ref_area) | is.null(source) | is.null(time) ){return('error plse specify path or ref_area AND source AND time')}
+		if(!(is.null(ref_area) | is.null(source) | is.null(time)) ){ path <- paste0(ilo:::path$micro, ref_area, '/', source, '/', time, '/', ref_area, '_', source, '_', time, '_ILO.dta')}
 	}
 
 
@@ -779,14 +787,30 @@ Micro_process_time <- function(		path = NULL,
 
 	if (!is.null(QUERY)){
 			ilo_tpl$Mapping_indicator <- ilo_tpl$Mapping_indicator %>% filter(Is_Validate %in% 'QUERY', indicator_definition %in% QUERY)
+			
+			# try(df <- df %>% mutate(	ilo_age_test  		= cut(as.numeric(ilo_age), breaks = c(0, 4, 9, 14,19,24,29,34,39,44,49,54,59,64,69,74,Inf), labels = 1:16, include.lowest = TRUE) %>% as.numeric), silent = TRUE) # age_ythadult 	
+				
 	} else {
 			ilo_tpl$Mapping_indicator <- ilo_tpl$Mapping_indicator %>% filter(Is_Validate %in% c('TRUE', 'FALSE'))
 	}
+
+	ref_columns <- colnames(df)[colnames(df) %in% {c('ilo_age_aggregate', 'ilo_job1_eco_aggregate', 'ilo_preveco_aggregate', 'ilo_age_5yrbands',paste0(ilo_tpl$Mapping_indicator$SELECT, collapse = ', ') %>% stringr::str_split(', ') %>% unlist) %>% unique()}]
+
+	df <- df %>% select(!!ref_columns)
+	
+	
+	invisible(gc(reset = TRUE))
+	invisible(gc(reset = TRUE))
+	
+	
 	ref <- paste0(colnames(df), collapse = '/')
 	
-	if(!str_detect(ref, 'sample_count')) {
+	if(!str_detect(ref, 'ilo_sample_count')) {
 	
-	df <- df %>% group_by_(.dots = colnames(df)[!colnames(df) %in% 'ilo_wgt']) %>% summarise(sample_count = n(), ilo_wgt = sum(ilo_wgt)) %>% ungroup
+	df <- df %>% 
+			#{eval(parse(text = paste0("group_by(.,", paste0(colnames(df)[!colnames(df) %in% 'ilo_wgt'], collapse = ', '), ")")))} %>% 
+			group_by_at(.vars = colnames(df)[!colnames(df) %in% 'ilo_wgt']) %>% 
+			summarise(ilo_sample_count = n(), ilo_wgt = sum(ilo_wgt)) %>% ungroup
 	}
 
 	invisible(gc(reset = TRUE))
@@ -794,21 +818,40 @@ Micro_process_time <- function(		path = NULL,
 	
 ##################### try to rebuilt aggregate variable	
 	
-
+	if(!str_detect(ref, 'ilo_age_ythadult')) {
+	
 	try(df <- df %>% mutate(	ilo_age_ythadult  		= ilo_age_aggregate 		%>% plyr:::mapvalues(from = c(2,3,4,5), 		to = c(1,2,2,2)			)), silent = TRUE) # age_ythadult 	
+	
+	}
+	if(!str_detect(ref, 'ilo_job1_eco_sector')) {
+	
 	try(df <- df %>% mutate(	ilo_job1_eco_sector  	= ilo_job1_eco_aggregate 	%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7), 	to = c(1,2,2,2,3,3,4) 	)), silent = TRUE) # eco_sector 	
+	
+	}
+	if(!str_detect(ref, 'ilo_preveco_sector')) {
+	
 	try(df <- df %>% mutate(	ilo_preveco_sector  	= ilo_preveco_aggregate		%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7), 	to = c(1,2,2,2,3,3,4) 	)), silent = TRUE) # eco_sector 	
+	
+	}
+	if(!str_detect(ref, 'ilo_job1_eco_agnag')) {
+	
 	try(df <- df %>% mutate(	ilo_job1_eco_agnag  	= ilo_job1_eco_aggregate 	%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7), 	to = c(1,2,2,2,2,2,2) 	)), silent = TRUE) # eco_agnag 	 to add  warn_missing = FALSE
+	
+	}
+	if(!str_detect(ref, 'ilo_age_ythbands')) {
+	
 	try(df <- df %>% mutate(	ilo_age_ythbands  		= ilo_age_5yrbands 			%>% plyr:::mapvalues(from = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14), to = c(NA,NA,NA,1,2,3,NA,NA,NA,NA,NA,NA,NA,NA)			)), silent = TRUE) # age_ythadult 	
-				
+	
+	}
 
 	
+
 	
 	invisible(gc(reset = TRUE))
 	invisible(gc(reset = TRUE))
 	
 	
-	note_sou <- ilo_tpl$Note %>% filter(var_name %in% c('ilo_country', 'ilo_source') & !ilostat_note_code %in% NA) %>% summarise(test = paste0(ilostat_note_code, collapse = '_')) %>% t %>% as.character 
+	note_sou <- ilo_tpl$Note %>% filter(var_name %in% c('ilo_country', 'ilo_ref_area', 'ilo_source') & !ilostat_note_code %in% NA) %>% summarise(test = paste0(ilostat_note_code, collapse = '_')) %>% t %>% as.character 
 	note_sou <- ifelse(note_sou %in% '', 'R1:3513', paste0('R1:3513_',note_sou))
 	
 	# allowed specific indicator	
@@ -816,6 +859,22 @@ Micro_process_time <- function(		path = NULL,
 								iloMicro:::Micro_process_test(view = F,QUERY) %>% 
 								filter(stringr::str_sub(indicator,-2,-1) %in% 'NB') %>% 
 								mutate(ref_ind = paste(rep_var, sex_var, classif1_var, classif2_var, sep = '/') %>% stringr::str_replace_all(stringr::fixed('/NA'), ''))
+	ref_available_ratio <- df %>% iloMicro:::Micro_process_test(view = F,QUERY)  %>% filter(stringr::str_sub(indicator,-2,-1) %in% 'RT') %>% mutate(ref_ind = paste(rep_var, sex_var, classif1_var, classif2_var, sep = '/') %>% stringr::str_replace_all(stringr::fixed('/NA'), ''))
+		
+	# YTHSTAT for CLS or SWTS if !=
+
+	if (str_detect(paste0(colnames(df), collapse = '') , 'ilo_age_ythbands')) {
+	
+		if(nrow(df %>% filter(!ilo_age_5yrbands %in% 1:6)) %in% 0 ){
+				ref_available_volume <- ref_available_volume %>% filter(collection %in% c('YTH', 'CLD'))
+				ref_available_ratio <- ref_available_ratio %>% filter(collection %in% c('YTH', 'CLD'))
+				}
+	
+	
+	}
+	
+	
+	
 	
 	if(nrow(ref_available_volume) == 0) return(NULL)
 	
@@ -831,7 +890,8 @@ Micro_process_time <- function(		path = NULL,
 		ref_available_volume <- ref_available_volume %>% filter(refvar %in% ref) %>% select(-refvar)
 		rm(ref)
 	}
-	ref_available_ratio <- df %>% iloMicro:::Micro_process_test(view = F,QUERY)  %>% filter(stringr::str_sub(indicator,-2,-1) %in% 'RT') %>% mutate(ref_ind = paste(rep_var, sex_var, classif1_var, classif2_var, sep = '/') %>% stringr::str_replace_all(stringr::fixed('/NA'), ''))
+	
+
 	if (!is.null(indicator)){
 		ref <- indicator
 		test <- stringr::str_split(ref,pattern = '/') %>% unlist
@@ -876,14 +936,14 @@ Micro_process_time <- function(		path = NULL,
 	
 	final <- bind_rows(volume, ratio) %>% 
 				mutate(	ref_area = 	ilo_tpl$Note %>% 
-											filter(var_name %in% 'ilo_country') %>% .$ilostat_code, 
+											filter(var_name %in% c('ilo_country', 'ilo_ref_area')) %>% .$ilostat_code, 
 						source = 	ilo_tpl$Note %>% filter(var_name %in% 'ilo_source') %>% .$ilostat_code) %>% 
-				select(ref_area, source, indicator, sex, classif1, classif2, time, obs_value, obs_status, contains('note_'), sample_count, table_test, ilo_wgt)
+				select(ref_area, source, indicator, sex, classif1, classif2, time, obs_value, obs_status, contains('note_'), ilo_sample_count, table_test, ilo_wgt)
 
 	if (delete){
 		final <- final %>% 
 				filter(table_test < ktest[3]) %>%	
-				select(-contains('sample_count'), -contains('table_test'), -contains('ilo_wgt')) %>% 
+				select(-contains('ilo_sample_count'), -contains('table_test'), -contains('ilo_wgt')) %>% 
 				mutate(obs_value = ifelse(obs_status %in% 'S',as.numeric(NA),  obs_value))
 	
 	} 
@@ -907,7 +967,7 @@ Micro_process_time <- function(		path = NULL,
 
 									
 									
-		if(!keep_count) {final <- final %>% select(-sample_count, -table_test, -ilo_wgt)}
+		if(!keep_count) {final <- final %>% select(-ilo_sample_count, -table_test, -ilo_wgt)}
 		
 	
 		if(saveCSV){			
@@ -970,7 +1030,9 @@ Micro_process_annual_from_quarterlyCalculated <- function(	ref_area =  NULL,
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
 													skip = NULL, 
 													PUB = FALSE, 
-													QUERY = NULL){
+													QUERY = NULL, 
+													timefrom = NULL, 
+													timeto = NULL){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -1003,7 +1065,17 @@ Micro_process_annual_from_quarterlyCalculated <- function(	ref_area =  NULL,
 	reference_wf <-  workflow %>% filter(stringr::str_sub(time,5,5) %in% c('')) %>% mutate(year = stringr::str_sub(time,1,4) ) %>% distinct(ref_area, source, year)
 	workflow <- workflow %>% filter(level %in% c('M')) 
 	
-	
+	if(!is.null(timefrom)){
+			reftime <- as.numeric(str_sub(timefrom,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) > reftime - 1)
+			rm(reftime) 
+	}
+
+	if(!is.null(timeto)){
+			reftime <- as.numeric(str_sub(timeto,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) < reftime + 1)
+			rm(reftime) 
+	}	
 
 
 if(nrow(workflow)> 0){	
@@ -1013,7 +1085,7 @@ if(nrow(workflow)> 0){
 	for (sou in 1:length(unique(wfQ_cou$source))){
 		wfQ_sou <- wfQ_cou %>% filter(source %in% unique(wfQ_cou$source)[sou])
 		
-		test_break <- wfQ_sou %>% filter(note_value %in% 'B')  
+		test_break <- wfQ_sou %>% filter(source_flag %in% 'B')  
 		
 		wfQ_sou <- wfQ_sou %>% mutate(	year = stringr::str_sub(time, 1,4), 
 										quarter = stringr::str_sub(time,5,7) %>% 
@@ -1023,11 +1095,11 @@ if(nrow(workflow)> 0){
 								count(ref_area, source, time, level, freq_code, year) %>% 
 								filter(n %in% 3)
 		if(nrow(test_break)> 0 ){
-				test_break <- test_break %>% mutate(	year = stringr::str_sub(time, 1,4)) %>% distinct(year,note_value )
-		wfQ_sou <- wfQ_sou %>% left_join(test_break, by = "year")
+				test_break <- test_break %>% mutate(	year = stringr::str_sub(time, 1,4)) %>% distinct(year,source_flag )
+			wfQ_sou <- wfQ_sou %>% left_join(test_break, by = "year")
 		
 		} else {
-		wfQ_sou <- wfQ_sou %>% mutate(note_value = NA)
+			wfQ_sou <- wfQ_sou %>% mutate(source_flag = NA)
 		}
 		rm(test_break)
 		
@@ -1093,7 +1165,7 @@ if(nrow(workflow)> 0){
 																							note_classif = col_character(),
 																							note_indicator = col_character(),
 																							note_source = col_character(),
-																							sample_count = col_double(),
+																							ilo_sample_count = col_double(),
 																							table_test = col_double(),
 																							ilo_wgt = col_double(),
 																							freq_code = col_character())); return(X)}) %>% as.tbl %>% 
@@ -1117,7 +1189,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1135,7 +1207,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1171,18 +1243,18 @@ if(nrow(workflow)> 0){
 				if(nrow(X) > 0){
 				
 					X <- X %>% mutate(	obs_status = as.character(NA), 
-										obs_status = ifelse(sample_count < ktest[1],'U',  obs_status), 
-										obs_status = ifelse(sample_count < ktest[2],'S',  obs_status), 
+										obs_status = ifelse(ilo_sample_count < ktest[1],'U',  obs_status), 
+										obs_status = ifelse(ilo_sample_count < ktest[2],'S',  obs_status), 
 										table_test = as.character(NA))
 										
 					del <- X %>% count(obs_status) %>% filter(obs_status %in% 'S') %>% .$n / nrow(X)
 					X <- X %>% mutate(table_test = round(ifelse(length(del)>0,del, 0), 2)) %>%
-									mutate_if(Negate(is.numeric) , funs(as.character))
+									mutate_if(Negate(is.numeric) , .funs = as.character)
 					
 
 					rm(del)
 	
-					if(nrow(wfQ_ref %>% filter(note_value %in% 'B'))> 0){ 
+					if(nrow(wfQ_ref %>% filter(source_flag %in% 'B'))> 0){ 
 						X <- X %>% mutate(obs_status = ifelse(!stringr:::str_sub(obs_status, 1, 1) %in% c('S', 'U'), 'B', stringr:::str_sub(obs_status, 1, 1)))
 					}
 					fwrite(X, file = paste0(pathOutput, unique(wfQ_ref$ref_area), '/', unique(wfQ_ref$source), '/', unique(wfQ_ref$ref_area), '_', unique(wfQ_ref$source), '_', unique(substr(wfQ_ref$time,1,4)), '.csv'), na = '')
@@ -1212,7 +1284,9 @@ Micro_process_annual_from_quarterly <- function(	ref_area =  NULL,
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
 													skip = NULL, 
 													PUB = FALSE, 
-													QUERY = NULL){
+													QUERY = NULL, 
+													timefrom = NULL, 
+													timeto = NULL){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -1221,6 +1295,7 @@ Micro_process_annual_from_quarterly <- function(	ref_area =  NULL,
 
 	pathOutput <- paste0(ilo:::path$data, 'REP_ILO/MICRO/output/')
 	workflow <- iloMicro:::Micro_get_workflow(ref_area, source) %>% filter(level %in% c('Q')) %>% filter(str_detect(type, 'Copy|Master'))
+	
 	
 	if (!is.null(QUERY)){
 			pathOutput <- paste0(ilo:::path$query, QUERY, '/Input/')
@@ -1241,6 +1316,17 @@ Micro_process_annual_from_quarterly <- function(	ref_area =  NULL,
 			refskip <- skip
 			workflow <- workflow %>% filter(!source %in% refskip) 
 			rm(refskip) 
+	}
+		if(!is.null(timefrom)){
+			reftime <- as.numeric(str_sub(timefrom,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) > reftime - 1)
+			rm(reftime) 
+	}
+
+	if(!is.null(timeto)){
+			reftime <- as.numeric(str_sub(timeto,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) < reftime + 1)
+			rm(reftime) 
 	}
 	
 
@@ -1278,60 +1364,14 @@ if(nrow(workflow)> 0){
 			
 				if(test_freq == 0) {print('error freq not correct')}
 				
-				test_dir_available <- list.files() %>% as_tibble %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
+				test_dir_available <- list.files() %>% enframe(name = NULL) %>% separate(value, c('ref_area', 'source', 'time'), sep = '_') %>% mutate(time = str_sub(time, 1,-5))
 					
 				if(nrow(test_dir_available) > 0 & !is.null(QUERY)){
 				
 					wfQ_ref <- wfQ_ref %>% filter(time %in% test_dir_available$time) 
 				
-				} else {
-			
-			
-			
-			####################################################################################################################
-			####################################################################################################################
-			####################################################################################################################
-			if(unique(wfQ_ref$freq_code) %in% 'X'){
-			
-				wfQ_Xref <- wfQ_ref %>% filter(str_detect(time, 'M02|M05|M08|M11'))
-				
-				if(nrow(wfQ_Xref) > 0){	
-					for (Xref in 1:nrow(wfQ_Xref)){
-				
-				
-						ref_time <- wfQ_Xref$time[Xref] %>% str_replace('M02','Q1') %>% str_replace('M05','Q2') %>% str_replace('M08','Q3') %>% str_replace('M11','Q4') 
-						X <- read_csv(paste0(wfQ_Xref$ref_area[Xref], '_', wfQ_Xref$source[Xref], '_', wfQ_Xref$time[Xref],".csv"), col_types = cols_only(
-																							collection = col_character(),
-																							ref_area = col_character(),
-																							source = col_character(),
-																							indicator = col_character(),
-																							sex = col_character(),
-																							#ID = col_character(),
-																							classif1 = col_character(),
-																							classif2 = col_character(),
-																							time = col_character(),
-																							obs_value = col_double(),
-																							obs_status = col_character(),
-																							note_classif = col_character(),
-																							note_indicator = col_character(),
-																							note_source = col_character(),
-																							sample_count = col_double(),
-																							table_test = col_double(),
-																							ilo_wgt = col_double(),
-																							freq_code = col_character())) %>% 
-												mutate( time = ref_time) %>%
-						fwrite(file = paste0(pathOutput, unique(wfQ_Xref$ref_area[Xref]), '/', unique(wfQ_Xref$source[Xref]), '/', unique(wfQ_Xref$ref_area), '_', unique(wfQ_Xref$source[Xref]), '_', ref_time, '.csv'), na = '')
-				
-					}
-				}
-				wfQ_ref <- wfQ_ref %>% filter(str_detect(time, 'M02|M05|M08|M11')) %>% mutate(	
-												time = time %>% str_replace('M02','Q1'),
-												time = time %>% str_replace('M05','Q2'),
-												time = time %>% str_replace('M08','Q3'),
-												time = time %>% str_replace('M11','Q4'))
-			}
-			
-			}
+				} 
+
 
 			}
 			
@@ -1351,7 +1391,6 @@ if(nrow(workflow)> 0){
 																							source = col_character(),
 																							indicator = col_character(),
 																							sex = col_character(),
-																							#ID = col_character(),
 																							classif1 = col_character(),
 																							classif2 = col_character(),
 																							time = col_character(),
@@ -1360,7 +1399,7 @@ if(nrow(workflow)> 0){
 																							note_classif = col_character(),
 																							note_indicator = col_character(),
 																							note_source = col_character(),
-																							sample_count = col_double(),
+																							ilo_sample_count = col_double(),
 																							table_test = col_double(),
 																							ilo_wgt = col_double(),
 																							freq_code = col_character())); return(X)}) %>% as.tbl %>% 
@@ -1370,9 +1409,12 @@ if(nrow(workflow)> 0){
 					summarise(available_vs = 1) %>% ungroup %>% 
 					group_by(collection, ref_area, source, indicator, sex_version, classif1_version, classif2_version) %>% 
 					summarise(available_vs = sum(available_vs)) %>% ungroup
-				############## exception quarterly once a year take additionnal note reference periode
+				
+				############## exception quarterly once a year take additionnal note reference period
+				
 				if(test_freq %in% 1 & unique(X$freq_code) %in% 'k') {X <- X %>% mutate(note_source = paste0('S3:23_', note_source))}
-		######## average of number
+		
+				######## average of number
 	
 				NB1 <- X %>% filter(stringr:::str_sub(indicator,-2,-1) %in% 'NB', !stringr:::str_sub(indicator,1,3) %in% c('HOW','EAR')) %>% 
 						left_join(test_vs, by = c("collection", "ref_area", "source", "indicator", "sex_version", "classif1_version", "classif2_version")) %>% 			
@@ -1385,7 +1427,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1403,7 +1445,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1437,20 +1479,20 @@ if(nrow(workflow)> 0){
 				X <- bind_rows(NB1, NB2, RT1) ; rm(NB1, NB2, RT1)
 			
 				if(nrow(X) > 0){
-					X <- X %>% mutate(	obs_status = as.character(NA), 
-										obs_status = ifelse(sample_count < ktest[1],'U',  obs_status), 
-										obs_status = ifelse(sample_count < ktest[2],'S',  obs_status), 
+					X <- X %>% mutate(	# obs_status = as.character(NA), 
+										obs_status = ifelse(ilo_sample_count < ktest[1],'U',  obs_status), 
+										obs_status = ifelse(ilo_sample_count < ktest[2],'S',  obs_status), 
 										table_test = as.character(NA))
 										
 					del <- X %>% count(obs_status) %>% filter(obs_status %in% 'S') %>% .$n / nrow(X)
 					X <- X %>% mutate(table_test = round(ifelse(length(del)>0,del, 0), 2)) %>%
-									mutate_if(Negate(is.numeric) , funs(as.character))
+									mutate_if(Negate(is.numeric) , .funs = as.character)
 					
-					if(nrow(wfQ_ref %>% filter(note_value %in% 'B'))>0){ 
+					if(nrow(wfQ_ref %>% filter(source_flag %in% 'B'))>0){ 
 							X <- X %>% mutate(obs_status = ifelse(!stringr:::str_sub(obs_status, 1, 1) %in% c('S', 'U'), 'B', stringr:::str_sub(obs_status, 1, 1)))
 					}
 					rm(del)
-					fwrite(X, file = paste0(pathOutput, unique(wfQ_ref$ref_area), '/', unique(wfQ_ref$source), '/', unique(wfQ_ref$ref_area), '_', unique(wfQ_ref$source), '_', unique(substr(wfQ_ref$time,1,4)), '.csv'), na = '')
+					data.table:::fwrite(X, file = paste0(pathOutput, unique(wfQ_ref$ref_area), '/', unique(wfQ_ref$source), '/', unique(wfQ_ref$ref_area), '_', unique(wfQ_ref$source), '_', unique(substr(wfQ_ref$time,1,4)), '.csv'), na = '')
 					rm(X)
 					invisible(gc(reset = TRUE))
 					invisible(gc(reset = TRUE))
@@ -1475,7 +1517,9 @@ Micro_process_quarterly_from_monthly <- function(	ref_area =  NULL,
 													ktest = c(max = 15, min = 5, threshold = 0.334), 
 													skip = NULL, 
 													PUB = FALSE, 
-													QUERY = NULL){
+													QUERY = NULL, 
+													timefrom = NULL, 
+													timeto = NULL){
 	init_wd <- getwd()
 	
 	setwd(ilo:::path$micro)
@@ -1505,6 +1549,17 @@ Micro_process_quarterly_from_monthly <- function(	ref_area =  NULL,
 			refskip <- skip
 			workflow <- workflow %>% filter(!source %in% refskip) 
 			rm(refskip) 
+	}
+		if(!is.null(timefrom)){
+			reftime <- as.numeric(str_sub(timefrom,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) > reftime - 1)
+			rm(reftime) 
+	}
+
+	if(!is.null(timeto)){
+			reftime <- as.numeric(str_sub(timeto,1,4)) 
+			workflow <- workflow %>% filter(as.numeric(str_sub(time,1,4)) < reftime + 1)
+			rm(reftime) 
 	}
 	
 
@@ -1570,7 +1625,7 @@ if(nrow(workflow)> 0){
 																							note_classif = col_character(),
 																							note_indicator = col_character(),
 																							note_source = col_character(),
-																							sample_count = col_double(),
+																							ilo_sample_count = col_double(),
 																							table_test = col_double(),
 																							ilo_wgt = col_double(),
 																							freq_code = col_character())); return(X)}) %>% as.tbl %>% 
@@ -1594,7 +1649,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1612,7 +1667,7 @@ if(nrow(workflow)> 0){
 									note_indicator = first(note_indicator), 
 									note_source = first(note_source), 
 									freq_code = first(freq_code),
-									sample_count = sum(sample_count), 
+									ilo_sample_count = sum(ilo_sample_count), 
 									table_test = min(table_test), 
 									ilo_wgt = sum(ilo_wgt),
 									n = n()) %>% ungroup %>%
@@ -1647,22 +1702,26 @@ if(nrow(workflow)> 0){
 			
 				if(nrow(X) > 0){
 					X <- X %>% mutate(	obs_status = as.character(NA), 
-										obs_status = ifelse(sample_count < ktest[1],'U',  obs_status), 
-										obs_status = ifelse(sample_count < ktest[2],'S',  obs_status), 
+										obs_status = ifelse(ilo_sample_count < ktest[1],'U',  obs_status), 
+										obs_status = ifelse(ilo_sample_count < ktest[2],'S',  obs_status), 
 										table_test = as.character(NA))
 										
 					del <- X %>% count(obs_status) %>% filter(obs_status %in% 'S') %>% .$n / nrow(X)
 					X <- X %>% mutate(table_test = round(ifelse(length(del)>0,del, 0), 2)) %>%
-									mutate_if(Negate(is.numeric) , funs(as.character))
+									mutate_if(Negate(is.numeric) , .funs = as.character)
 					rm(del)
-					if(nrow(wfQ_ref %>% filter(note_value %in% 'B'))>0){ 
+					if(nrow(wfQ_ref %>% filter(source_flag %in% 'B'))>0){ 
 							X <- X %>% mutate(obs_status = ifelse(!stringr:::str_sub(obs_status, 1, 1) %in% c('S', 'U'), 'B', stringr:::str_sub(obs_status, 1, 1)))
 					}
 					fwrite(X, file = paste0(pathOutput, unique(wfQ_ref$ref_area), '/', unique(wfQ_ref$source), '/', unique(wfQ_ref$ref_area), '_', unique(wfQ_ref$source), '_', unique(wfQ_ref$quarter), '.csv'), na = '')
-					rm(X)
+					
+						rm(X)
+					
 					invisible(gc(reset = TRUE))
 					invisible(gc(reset = TRUE))
+					
 					print(paste0(unique(wfQ_ref$ref_area), '_', unique(wfQ_ref$source), '_', unique(wfQ_ref$quarter)))
+				
 				}
 			}
 		
@@ -1768,7 +1827,7 @@ Micro_process_all <- function(		ref_area =  NULL,
 																note_classif = col_character(),
 																note_indicator = col_character(),
 																note_source = col_character(),
-																sample_count = col_double(), 
+																ilo_sample_count = col_double(), 
 																table_test = col_double(),
 																ilo_wgt = col_double(),
 																freq_code = col_character()), progress = FALSE);return(X)}) %>% as.tbl %>% ilo:::switch_ilo(version, keep)
@@ -1787,14 +1846,14 @@ Micro_process_all <- function(		ref_area =  NULL,
 		 
 			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_IFL_ECO_NB', 'EMP_IFLS_SEX_IFL_ECO_NB')), 'ECO'))
 			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_MTS_IFL_NB', 'EMP_IFLS_SEX_MTS_IFL_NB')), 'MTS'))
-			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_GEO_IFL_NB', 'EMP_IFLS_SEX_GEO_IFL_NB')), 'MTS'))
+			X <- bind_rows(X, iloMicro:::create_informality(X %>% filter(indicator %in% c('EMP_IFLE_SEX_GEO_IFL_NB', 'EMP_IFLS_SEX_GEO_IFL_NB')), 'OCU'))
 					
 		
 
 					
 					
 			#X <- X %>% filter(table_test < ktest[3]) #%>%	#clean up the reliability test
-				# select(-contains('sample_count'), -contains('table_test'), -contains('ilo_wgt'))
+				# select(-contains('ilo_sample_count'), -contains('table_test'), -contains('ilo_wgt'))
 			X <- X %>% select( -contains('ilo_wgt'))
 		
 			save(X,  file = paste0(pathOutput, wf$ref_area[i], '/', wf$source[i], '/', wf$ref_area[i], '_', wf$source[i], '_ilostat.Rdata'))
@@ -1861,7 +1920,7 @@ if(test %in% 'ECO' & nrow(df) > 0){
 						note_classif = first(note_classif),
 						note_indicator = first(note_indicator),
 						note_source = first(note_source),
-						sample_count = first(sample_count),
+						ilo_sample_count = first(ilo_sample_count),
 						table_test = min(table_test),
 						ilo_wgt = first(ilo_wgt),
 						freq_code = first(freq_code)				
@@ -1880,7 +1939,7 @@ if(test %in% 'ECO' & nrow(df) > 0){
 						note_classif = first(note_classif),
 						note_indicator = first(note_indicator),
 						note_source = first(note_source),
-						sample_count = sum(sample_count),
+						ilo_sample_count = sum(ilo_sample_count),
 						table_test = min(table_test),
 						ilo_wgt = sum(ilo_wgt),
 						freq_code = first(freq_code)) %>% 
@@ -1894,56 +1953,10 @@ return(df)
 if(test %in% 'GEO' & nrow(df) > 0){
 
 
-
-	df <- df %>% 	filter(!classif2 %in% 'ECO_AGNAG_AGR') %>% 
-			mutate(	
-					classif1 = ifelse(classif1 %in% c('IFL_NATURE_TOTAL', 'IFL_PROD_TOTAL'), 'IFL_COMP_EMP', classif1), 
-					indicator = 'IFL_4IEM_SEX_ECO_IFL_NB') %>% 
-			
-			group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
-			summarise(	obs_value = first(obs_value),
-						obs_status = first(obs_status),
-						note_classif = first(note_classif),
-						note_indicator = first(note_indicator),
-						note_source = first(note_source),
-						sample_count = first(sample_count),
-						table_test = min(table_test),
-						ilo_wgt = first(ilo_wgt),
-						freq_code = first(freq_code)				
-						) %>% 
-			ungroup %>% 
-			mutate(
-					classif1 = ifelse(classif1 %in% c('IFL_NATURE_INFORMAL'), 						'IFL_COMP_INFEMP', classif1), 
-					classif1 = ifelse(classif1 %in% c('IFL_NATURE_FORMAL'), 						'IFL_COMP_FRMEMP', classif1), 
-					classif1 = ifelse(classif1 %in% c('IFL_PROD_FORMAL'), 							'IFL_COMP_FRMSECTOR', classif1), 
-					classif1 = ifelse(classif1 %in% c('IFL_PROD_INFORMAL', 'IFL_PROD_HOUSEHOLD'), 	'IFL_COMP_OFS', classif1), 
-					classif2 = classif2 %>% stringr::str_replace('ECO_AGNAG_', 	'ECO_TOTNAG_')
-			
-			) %>% group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
-			summarise (obs_value = sum(obs_value),
-						obs_status = first(obs_status),
-						note_classif = first(note_classif),
-						note_indicator = first(note_indicator),
-						note_source = first(note_source),
-						sample_count = sum(sample_count),
-						table_test = min(table_test),
-						ilo_wgt = sum(ilo_wgt),
-						freq_code = first(freq_code)) %>% 
-			ungroup %>% 
-			mutate(PASS = classif2, 
-					classif2 = classif1, 
-					classif1 = PASS) %>% select(-PASS)
-return(df)	
-} 
-
-if(test %in% 'MTS' & nrow(df) > 0){
-
-
-
 	df <- df %>% 	
 			mutate(	
 					classif2 = ifelse(classif2 %in% c('IFL_NATURE_TOTAL', 'IFL_PROD_TOTAL'), 'IFL_COMP_EMP', classif2), 
-					indicator = 'IFL_4IEM_SEX_MTS_IFL_NB') %>% 
+					indicator = 'IFL_4IEM_SEX_GEO_IFL_NB') %>% 
 			
 			group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
 			summarise(	obs_value = first(obs_value),
@@ -1951,7 +1964,7 @@ if(test %in% 'MTS' & nrow(df) > 0){
 						note_classif = first(note_classif),
 						note_indicator = first(note_indicator),
 						note_source = first(note_source),
-						sample_count = first(sample_count),
+						ilo_sample_count = first(ilo_sample_count),
 						table_test = min(table_test),
 						ilo_wgt = first(ilo_wgt),
 						freq_code = first(freq_code)				
@@ -1969,7 +1982,48 @@ if(test %in% 'MTS' & nrow(df) > 0){
 						note_classif = first(note_classif),
 						note_indicator = first(note_indicator),
 						note_source = first(note_source),
-						sample_count = sum(sample_count),
+						ilo_sample_count = sum(ilo_sample_count),
+						table_test = min(table_test),
+						ilo_wgt = sum(ilo_wgt),
+						freq_code = first(freq_code)) %>% 
+			ungroup 
+return(df)
+} 
+
+if(test %in% 'MTS' & nrow(df) > 0){
+
+
+
+	df <- df %>% 	
+			mutate(	
+					classif2 = ifelse(classif2 %in% c('IFL_NATURE_TOTAL', 'IFL_PROD_TOTAL'), 'IFL_COMP_EMP', classif2), 
+					indicator = 'IFL_4IEM_SEX_MTS_IFL_NB') %>% 
+			
+			group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
+			summarise(	obs_value = first(obs_value),
+						obs_status = first(obs_status),
+						note_classif = first(note_classif),
+						note_indicator = first(note_indicator),
+						note_source = first(note_source),
+						ilo_sample_count = first(ilo_sample_count),
+						table_test = min(table_test),
+						ilo_wgt = first(ilo_wgt),
+						freq_code = first(freq_code)				
+						) %>% 
+			ungroup %>% 
+			mutate(
+					classif2 = ifelse(classif2 %in% c('IFL_NATURE_INFORMAL'), 'IFL_COMP_INFEMP', classif2), 
+					classif2 = ifelse(classif2 %in% c('IFL_NATURE_FORMAL'), 'IFL_COMP_FRMEMP', classif2), 
+					classif2 = ifelse(classif2 %in% c('IFL_PROD_FORMAL'), 'IFL_COMP_FRMSECTOR', classif2), 
+					classif2 = ifelse(classif2 %in% c('IFL_PROD_INFORMAL', 'IFL_PROD_HOUSEHOLD'), 'IFL_COMP_OFS', classif2)
+			
+			) %>% group_by(collection, ref_area, source, indicator, sex, classif1, classif2, time) %>% 
+			summarise (obs_value = sum(obs_value),
+						obs_status = first(obs_status),
+						note_classif = first(note_classif),
+						note_indicator = first(note_indicator),
+						note_source = first(note_source),
+						ilo_sample_count = sum(ilo_sample_count),
 						table_test = min(table_test),
 						ilo_wgt = sum(ilo_wgt),
 						freq_code = first(freq_code)) %>% 
@@ -1980,3 +2034,5 @@ return(df)
 NULL
 
 }
+
+

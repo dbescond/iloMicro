@@ -22,30 +22,31 @@
 
 Micro_get_workflow <- function(ref_area = NULL, source = NULL, time = NULL){
 
-init <- getwd()
-setwd(ilo:::path$micro)
+	init <- getwd()
+	setwd(ilo:::path$micro)
 
-ref_cou <- ref_area 
-ref_sou <- source
-ref_tim <- time
-options(warn = -1)
-COLNAME <- readxl:::read_excel('./_Admin/0_WorkFlow.xlsx', sheet = 'file', n_max = 0) %>% colnames
-COLTYPE <- rep('text', length(COLNAME)) 
+	ref_cou <- ref_area 
+	ref_sou <- source
+	ref_tim <- time
+	options(warn = -1)
+	COLNAME <- readxl:::read_excel('./_Admin/0_WorkFlow.xlsx', sheet = 'file', n_max = 0) %>% colnames
+	COLTYPE <- rep('text', length(COLNAME)) 
 
-COLTYPE[str_detect(COLNAME, '_date')] <- 'date'
+	COLTYPE[str_detect(COLNAME, '_date')] <- 'date'
 
-readxl:::read_excel('./_Admin/0_WorkFlow.xlsx', sheet = 'file',	col_types = COLTYPE)	%>% 	# glimpse(workflow)
-			filter(!ref_area %in% NA) %>%
-			mutate(	path = paste0(getwd(), '/', ref_area,'/', source, '/', time), 
-					file = paste0(getwd(), '/', ref_area,'/', source, '/', time, '/', ref_area, '_', source, '_', time, '_ILO.dta'), 
-					file = gsub('.dta_ILO.','_ILO.',file, fixed = TRUE),
-					file = ifelse(str_detect(type, 'Copy|Master'), file, NA),
-					path = paste0( ref_area,'/', source, '/', time)) %>% 
-			arrange(ref_area) %>% 
-			{if(!is.null(ref_cou)) filter(., ref_area %in% ref_cou) else .} %>% 
-			{if(!is.null(ref_sou)) filter(., source %in% ref_sou) else .} %>% 
-			{if(!is.null(ref_tim)) filter(., time %in% ref_tim) else .} %>% 
-			{invisible(gc(reset = TRUE)); setwd(init);options(warn = 0); .} 
+	readxl:::read_excel('./_Admin/0_WorkFlow.xlsx', sheet = 'file',	col_types = COLTYPE)	%>% 	# glimpse(workflow)
+				filter(!ref_area %in% NA) %>%
+				mutate(	path = paste0(getwd(), '/', ref_area,'/', source, '/', time), 
+						file = paste0(getwd(), '/', ref_area,'/', source, '/', time, '/', ref_area, '_', source, '_', time, '_ILO.dta'), 
+						file = gsub('.dta_ILO.','_ILO.',file, fixed = TRUE),
+						file = ifelse(str_detect(type, 'Copy|Master'), file, NA),
+						path = paste0( ref_area,'/', source, '/', time)) %>% 
+				arrange(ref_area) %>% 
+				select(-contains('check_')) %>%
+				{if(!is.null(ref_cou)) filter(., ref_area %in% ref_cou) else .} %>% 
+				{if(!is.null(ref_sou)) filter(., source %in% ref_sou) else .} %>% 
+				{if(!is.null(ref_tim)) filter(., time %in% ref_tim) else .} %>% 
+				{invisible(gc(reset = TRUE)); setwd(init);options(warn = 0); .} 
 					
 					
 					

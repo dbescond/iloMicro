@@ -42,14 +42,14 @@ Micro_load <- function(	path = NULL,
 		}
 	options(warn = 0)
 		
-
+ 
 	invisible(gc(reset = TRUE))
 	invisible(gc(reset = TRUE))
 
 	
 	
 	if(!asFactor){
-		df <- df %>% mutate_if(is.labelled, funs(unclass)) 
+		df <- df %>% haven:::zap_labels() # mutate_if(is.labelled, funs(unclass)) 
 	}
 	if(!is.null(ilo_time)) {
 		df <- df %>%  mutate(ilo_wgt = ilo_wgt / length(unique(ilo_time)), ilo_time = ref_time)
@@ -78,7 +78,4 @@ Micro_load <- function(	path = NULL,
 		return(df)	
 	}
 }
-
-
-is.labelled <- function(x) inherits(x, "labelled")
 

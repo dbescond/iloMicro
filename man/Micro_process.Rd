@@ -6,9 +6,9 @@
 \usage{
 Micro_process(ref_area = NULL, source = NULL, time = NULL,
   indicator = NULL, ktest = c(max = 15, min = 5, threshold = 0.334),
-  saveCSV = TRUE, ilo_time = NULL, delete = FALSE,
-  collection = "YI", keep_count = TRUE, query = NULL,
-  print_ind = TRUE, validate = FALSE, consolidate = "1",
+  saveCSV = FALSE, ilo_time = NULL, delete = FALSE,
+  collection = "STI", keep_count = TRUE, query = NULL,
+  print_ind = FALSE, validate = FALSE, consolidate = "1",
   skip = NULL, timefrom = NULL, timeto = NULL, output = "ilostat",
   PUB = FALSE, QUERY = NULL)
 }
@@ -62,11 +62,11 @@ faster method to recode, order, add label of categorical variables
 ## Not run:
 
 # process the all time series validate in the workflowflow
- Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE, time = '2016Q1')
+ Micro_process(ref_area = 'ZAF', source = 'QLFS', saveCSV = TRUE, validate = TRUE, time = '2016Q1', print_ind = TRUE)
 
 
 # run the entire process for one country only (go for publication on ilostat)
-Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
+Micro_process(validate = TRUE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
 
 ## End(**Not run**)
 }

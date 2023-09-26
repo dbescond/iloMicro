@@ -4,7 +4,13 @@
 \alias{Micro_get_workflow}
 \title{helper to work with micro data preprocessing workflow}
 \usage{
-Micro_get_workflow(ref_area = NULL, source = NULL, time = NULL)
+Micro_get_workflow(
+  ref_area = NULL,
+  source = NULL,
+  time = NULL,
+  timefrom = NULL,
+  timeto = NULL
+)
 }
 \arguments{
 \item{ref_area}{character vector for selection of country (iso3 code), default NULL, all.}

@@ -2,15 +2,24 @@
 % Please edit documentation in R/Micro_process.r
 \name{Micro_process}
 \alias{Micro_process}
-\title{helper to calculate ilo indicator (volume and ratio) for one time period only}
+\title{helper to calculate micro indicator (volume and ratio) for ilo data and query}
 \usage{
-Micro_process(ref_area = NULL, source = NULL, time = NULL,
-  indicator = NULL, ktest = c(max = 15, min = 5, threshold = 0.334),
-  saveCSV = TRUE, ilo_time = NULL, delete = FALSE,
-  collection = "YI", keep_count = TRUE, query = NULL,
-  print_ind = TRUE, validate = FALSE, consolidate = "1",
-  skip = NULL, timefrom = NULL, timeto = NULL, output = "ilostat",
-  PUB = FALSE, QUERY = NULL)
+Micro_process(
+  ref_area = NULL,
+  source = NULL,
+  time = NULL,
+  timefrom = NULL,
+  timeto = NULL,
+  consolidate = "1",
+  validate = FALSE,
+  PUB = FALSE,
+  ktest = c(max = 15, min = 5, threshold = 0.334),
+  saveCSV = FALSE,
+  QUERY = "ILOSTAT",
+  ICLS = "13",
+  CMD = FALSE,
+  TEST_SCOPE = FALSE
+)
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
@@ -19,55 +28,47 @@ Micro_process(ref_area = NULL, source = NULL, time = NULL,
 
 \item{time}{, character, time, use for a specific dataset, default NULL, mandatory if path is not set.}
 
-\item{indicator}{allow to select a specific indicatr see example, default NULL means that all indicator available will be generate from the microdataset.}
+\item{timefrom}{query to reduce time as from starting year timefrom.}
+
+\item{timeto}{query to reduce time as from ending year timeto.}
+
+\item{consolidate}{default "1", or "123".}
+
+\item{validate}{only ready file on workflow.}
+
+\item{PUB}{if TRUE will process only dataset ready for ilostat publication (ie. workflow on_ilostat = 'Yes') else all ready/published. Default FALSE.}
 
 \item{ktest}{numeric vector, thresholds define to determine whether an indicator is unrealable or not, see section, default c(max = 30, min = 5, threshold = 0.334).}
 
 \item{saveCSV}{save result in ilostat csv format on the directory of the path, default FALSE, if TRUE tes on scope, indicator, version is done.}
 
-\item{ilo_time}{force microdataset ilo_time variable to a new define value, ideal to move quarterly data to yearly, default NULL.}
+\item{QUERY}{process only indicator dedicate to a special query, not the entire set of indicators (ie. indicator template columns query_folder set to not null). Default "ILOSTAT".}
 
-\item{delete}{thresholds define to determine whether an indicator is unrealable or not, see section.}
+\item{ICLS}{"13" as default, if "19" take ILO19.dta when available, use only for QUERY.}
 
-\item{collection}{map in another collection.}
-
-\item{keep_count}{expert only.}
-
-\item{query}{expert only.}
-
-\item{print_ind}{print indicator processed, default = TRUE.}
-
-\item{validate}{only ready file on workflow.}
-
-\item{skip}{for excuding a source as character.}
-
-\item{timefrom}{query to reduce time as from starting year timefrom.}
-
-\item{timeto}{query to reduce time as from ending year timeto.}
-
-\item{output}{if one year one specific indicator, return in ilo template format. Default 'ilostat'.}
-
-\item{PUB}{if TRUE will process only dataset ready for ilostat publication (ie. workflow on_ilostat = 'Yes') else all ready/published. Default FALSE.}
-
-\item{QUERY}{process only indicator dedicate to a special query, not the entire set of indicators (ie. indicator template columns indicator_definition set to not null). Default NULL.}
-
-\item{path}{dta or zip file path for loading ilo microdataset pre precessed, default = NULL.}
-
-\item{test}{expert only.}
+\item{CMD}{, default FALSE, if true return str with cmd line for all Published and Ready Country/Source}
 }
 \description{
-faster method to recode, order, add label of categorical variables
+faster method to recode, order, add label of categorical variables. revision: 04/01/2022
 }
 \examples{
 ## Not run:
 
-# process the all time series validate in the workflowflow
- Micro_process(ref_area = 'ZAF', source = 'QLFS', print_ind = FALSE, saveCSV = TRUE, validate = TRUE, time = '2016Q1')
+ Micro_process(saveCSV = TRUE, validate = TRUE, ref_area = 'ZAF', source = 'LFS', time = '2016Q1')
 
 
-# run the entire process for one country only (go for publication on ilostat)
-Micro_process(collection = 'STI', print_ind = FALSE, validate = TRUE, saveCSV = FALSE, consolidate = '123', PUB = TRUE, skip = 'EULFS', ref_area ='ZAF', source = 'LFS')
+Micro_process(validate = TRUE, consolidate = '123', PUB = TRUE, ref_area ='ZAF', source = 'LFS')
 
+
+# you could now rebuild, process 1 for a single time, then process 23
+# use mainly for adding oe dataset to a series yet publish
+
+Publish_micro("CAN", "LFS", "1980M11")
+
+ # run all in parallel
+
+cmd <- Micro_process(CMD = TRUE)
+ run_parallel_ilo(cmd)
 ## End(**Not run**)
 }
 \author{

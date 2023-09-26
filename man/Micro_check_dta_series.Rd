@@ -4,17 +4,27 @@
 \alias{Micro_check_dta_series}
 \title{helper to check dta columns and value present over times series}
 \usage{
-Micro_check_dta_series(ref_area = NULL, source = NULL, time = NULL,
-  validate = TRUE, saveCSV = FALSE)
+Micro_check_dta_series(
+  ref_area = NULL,
+  source = NULL,
+  timefrom = NULL,
+  timeto = NULL,
+  freq = "all",
+  CMD = FALSE
+)
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
 
 \item{source}{character for selection of source (as ilo micro spelling, ie. LFS), mandatory if path is not set.}
 
-\item{time}{, character, time, use for a specific dataset, default NULL, mandatory if path is not set.}
+\item{timefrom}{, character, time, use for specific datasets period, default NULL.}
 
-\item{validate}{, use only ready files, default TRUE}
+\item{timeto}{,   character, time, use for specific datasets period, default NULL.}
+
+\item{freq}{, default 'all', else Annual, 'A', else or quarterly 'Q' or Monthly 'M'}
+
+\item{CMD}{, default FALSE, if true return str with cmd line for all Published and Ready Country/Source}
 }
 \description{
 Support for recoding variable, check \code{?car::Recode}, for labelling variable
@@ -23,7 +33,18 @@ Support for recoding variable, check \code{?car::Recode}, for labelling variable
 ## Not run:
 
 
-X <- Micro_check_dta_series(ref_area = 'ALB', source = 'LFS')
+Micro_check_dta_series(ref_area = 'IND', source = 'PLFS')
+
+
+
+ # run all in parallel
+
+cmd <- Micro_check_dta_series(CMD = TRUE)
+ run_parallel_ilo(cmd)
+
+ # then add this command to clear up entry file
+  Micro_check_variable(STORE = TRUE)
+
 
 ## End(**Not run**)
 }

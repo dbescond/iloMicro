@@ -4,7 +4,7 @@
 \alias{Micro_check_dta_series_view}
 \title{helper to check dta columns and value present over times series}
 \usage{
-Micro_check_dta_series_view(ref_area, source)
+Micro_check_dta_series_view(ref_area, source, freq = "A")
 }
 \arguments{
 \item{ref_area}{character for selection of country (iso3 code), mandatory if path is not set.}
@@ -17,8 +17,13 @@ Support for recoding variable, check \code{?car::Recode}, for labelling variable
 \examples{
 ## Not run:
 
+ be sure having yet run:
 
-Micro_check_dta_series_view(ref_area = 'ALB', source = 'LFS')
+ Micro_check_dta_series(ref_area = 'IND', source = 'PLFS')
+
+ then run : 
+
+Micro_check_dta_series_view(ref_area = 'IND', source = 'PLFS', freq = 'M')
 
 ## End(**Not run**)
 }

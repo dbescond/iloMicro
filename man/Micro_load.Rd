@@ -4,17 +4,16 @@
 \alias{Micro_load}
 \title{helper to load ilo.dta file for the processing process}
 \usage{
-Micro_load(path = NULL, ilo_time = NULL, query = NULL,
-  asFactor = FALSE, Pending = NULL)
+Micro_load(path = NULL, query = "ILOSTAT", asFactor = FALSE, tpl = TRUE)
 }
 \arguments{
 \item{path}{dta or zip file path for loading ilo microdataset pre precessed, default 'tpl' means that predifine example will be load, if NULL load only ilo framework.}
 
-\item{ilo_time}{force microdataset ilo_time variable to a new define value, ideal to move quarterly data to yearly}
+\item{query}{indicator definition subset}
 
 \item{asFactor}{loading microdataset with code and label (as.factor) if TRUE only numeric code.}
 
-\item{Pending}{pass argument to delete pending columns.}
+\item{tpl}{default = TRUE return micro template Variable, Mapping_indicator, Mapping_classif.}
 }
 \description{
 dataset could be manipulate during the load file base on the workflow arguments

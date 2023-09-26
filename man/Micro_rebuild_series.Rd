@@ -4,8 +4,19 @@
 \alias{Micro_rebuild_series}
 \title{helper to work with micro data preprocessing workflow}
 \usage{
-Micro_rebuild_series(master_id = "all", ref_area, source, time = NULL,
-  clean = TRUE, timefrom = NULL, timeto = NULL)
+Micro_rebuild_series(
+  master_id = "all",
+  ref_area = NULL,
+  source = NULL,
+  time = NULL,
+  clean = TRUE,
+  timefrom = NULL,
+  timeto = NULL,
+  add_master = FALSE,
+  freq = "all",
+  CMD = FALSE,
+  EUROSTAT = NULL
+)
 }
 \arguments{
 \item{master_id}{character ie. '1' for working with master_1 and copy_1. Default = 'all', could be also '12' for master 1 and 2.}
@@ -21,6 +32,14 @@ Micro_rebuild_series(master_id = "all", ref_area, source, time = NULL,
 \item{timefrom}{query to reduce time as from starting year timefrom.}
 
 \item{timeto}{query to reduce time as from ending year timeto.}
+
+\item{add_master}{if true rebuild also the master dta files, else only copy.}
+
+\item{freq}{if "A" apply only to annual dataset , default "all".}
+
+\item{CMD}{, default FALSE, if true return str with cmd line for all Published and Ready Country/Source}
+
+\item{EUROSTAT}{, default NULL, coudl be "EULFS" or "EUSILC"}
 }
 \description{
 From Master_x rebuild time series by copy readMe, do and fwk files, then run do file and get ILO.dta and FULL.dtaand
@@ -30,13 +49,25 @@ From Master_x rebuild time series by copy readMe, do and fwk files, then run do 
 
 ## some example
 
-	Micro_rebuild_series(master_id = '1', ref_area = 'PHL', source = 'LFS', time = '2015Q3')
+	Micro_rebuild_series(master_id = '1', ref_area = 'USA', source = 'CPS', time = '2020',freq = "A")
 
  Micro_rebuild_series(master_id = '1', ref_area = 'PHL', source = 'LFS') # Master 1
 
  Micro_rebuild_series(master_id = '12', ref_area = 'PHL', source = 'LFS') # Master 1 and Master2
 
- Micro_rebuild_series(ref_area = 'PHL', source = 'LFS') # all Masters
+
+
+
+ Micro_rebuild_series(ref_area = 'PHL', source = 'LFS', add_master = FALSE) # from all Masters
+
+
+
+ # run all in parallel
+
+cmd <- Micro_rebuild_series(CMD = TRUE)
+ run_parallel_ilo(cmd)
+
+
 
 ## End(**Not run**)
 }

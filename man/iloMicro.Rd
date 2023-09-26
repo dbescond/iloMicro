@@ -2,7 +2,7 @@
 % Please edit documentation in R/iloMicro.r
 \name{iloMicro}
 \alias{iloMicro}
-\title{Tools kit for ilo microdata processing of household / labour force survey}
+\title{Tools kit for ilo microdata processing of household sample survey}
 \description{
 description of the project here
 }
@@ -15,6 +15,38 @@ Targets:
 \item prepare summary table for current file available
 \item helper to convert sav to dta and viseversa
 }
+}
+\examples{
+## Not run:
+
+# Main functions : 
+
+# rebuild entire time series, or add time = "2020" for specific time:
+
+Micro_rebuild_series(ref_area = 'PHL', source = 'LFS', add_master = FALSE) 
+
+# test scope and mapping for entire time series (that does no process, just test):
+
+Micro_process(validate = TRUE, consolidate = '1'  , PUB = TRUE, ref_area ='AFG', source = 'LCS', TEST_SCOPE = TRUE)
+
+# process entire time series, or add time = '2020' AND consolidate = '1', for specific time 
+Micro_process(validate = TRUE, consolidate = '1'  , PUB = TRUE, ref_area ='AFG', source = 'LCS', time = '2017')
+Micro_process(validate = TRUE, consolidate = '23', PUB = TRUE, ref_area ='AFG', source = 'LCS')
+
+
+
+# rebuild, process consolidate by adding only one dataset:
+Publish_micro("CAN", "LFS", "1980M11")
+
+ # run all in parallel
+
+# get command:
+cmd <- Micro_check_dta_series(CMD = TRUE) 	# or :
+cmd <- Micro_rebuild_series(CMD = TRUE) 	# or :
+cmd <- Micro_process(CMD = TRUE)
+ run_parallel_ilo(cmd)
+## End(**Not run**)
+
 }
 \references{
 See citation("iloMicro")

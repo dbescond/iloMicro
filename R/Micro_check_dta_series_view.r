@@ -8,24 +8,64 @@
 #' @examples
 #' ## Not run:
 #'
+#'  be sure having yet run:
 #'
-#'	Micro_check_dta_series_view(ref_area = 'ALB', source = 'LFS')
+#'  Micro_check_dta_series(ref_area = 'IND', source = 'PLFS')
+#'
+#'  then run : 
+#'
+#'	Micro_check_dta_series_view(ref_area = 'IND', source = 'PLFS', freq = 'M')
 #'
 #' ## End(**Not run**)
 #' @export
 
-Micro_check_dta_series_view <- function(ref_area, source){
+Micro_check_dta_series_view <- function(ref_area, source, freq = 'A'){
 								
-load(paste0(ilo:::path$data, 'REP_ILO/MICRO/input/TEST_DTA/', ref_area, '_', source, '.Rdata'))							
+								
+# ref_area =  'IND';  source = 'PLFS' ;freq = 'A'
+								
+
 
 require(shiny)
 require(dygraphs)
+init_ilo()
+
 
 ui <- fluidPage(
-		titlePanel(title=h4("var", align="center")),
-		actionButton("Buttonlast", "last"), 
-		actionButton("Buttonnext", "next"),
-		mainPanel(dygraphOutput("plot2"))
+		fluidRow(
+		column(1,
+				HTML("")
+		
+				),
+			column(8,
+			uiOutput(outputId = 'My_title')),
+			column(1,
+						HTML("")
+		
+				)
+		),
+		
+		fluidRow(
+			column(1,
+				HTML("")
+		
+				),
+			column(8,
+				dygraphOutput("plot2")
+			), 
+			column(2,
+					
+					
+					actionButton("Buttonlast", "last"), 
+					actionButton("Buttonnext", "next")
+			),
+			column(1,
+						HTML("")
+		
+				)
+		)
+		
+		
 
 )
 
@@ -33,9 +73,28 @@ ui <- fluidPage(
 
 server <- function(input,output){
   
+  load(paste0(MY_PATH$micro, '_Admin/CMD/input/', ref_area, '_', source, "_", freq, '.Rdata'))	
+
   count <- reactiveValues(value = 1)
   count_min <- 1
   count_max <- length(ts_model)
+  period <- ifelse(freq %in% 'A', 
+							'Yearly', 
+							ifelse(freq %in% 'Q', 
+							'Quarterly', 
+							'Monthly'))  
+  output$My_title <- 	renderUI({
+  
+			h1(	paste0(	ref_area %>% as_tibble_col(column_name = "ref_area") %>% switch_ilo(ref_area) %>% .$ref_area.label, ' - ', 
+						source, " - ", 
+						ifelse(freq %in% 'A', 
+							'Yearly', 
+							ifelse(freq %in% 'Q', 
+							'Quarterly', 
+							'Monthly')) ))
+  })
+  
+  
   
   
   observeEvent(input$Buttonnext, {
@@ -51,17 +110,15 @@ server <- function(input,output){
   }) 
   
   output$plot2<-renderDygraph({
-
-	period <- ifelse(stringr::str_sub(names(ts_model[count$value]), -1,-1) %in% 'A', 
-							'yearly', 
-							ifelse(stringr::str_sub(names(ts_model[count$value]), -1,-1) %in% 'Q', 
-							'quarterly', 
-							'monthly'))
-	dygraph(ts_model[[count$value]], main = names(ts_model[count$value])) %>%
+		
+							
+	dygraph(ts_model[[count$value]], main = paste0(str_sub(names(ts_model[count$value]),1, -3)) ) %>%
 	dyOptions(	colors = RColorBrewer::brewer.pal( max(ncol(ts_model[count$value]) - 1, 3), "Set2"), 
-				drawGrid = FALSE)%>%
+				drawGrid = FALSE, 
+				drawXAxis = TRUE)%>%
 		dyAxis('x', pixelsPerLabel = 100) %>%
-  dyLegend(width = 800)  %>% dyRangeSelector() 
+	
+	dyLegend(width = 800)  %>% dyRangeSelector() 
 
    })
 }
